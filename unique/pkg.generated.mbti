@@ -1,0 +1,30 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift/unique"
+
+import {
+  "moonbitlang/core/debug",
+  "wedarp/relsift/dependency",
+  "wedarp/relsift/partition",
+}
+
+// Values
+pub fn discover(@partition.Index, Array[Ucc]) -> Unit raise
+
+// Errors
+
+// Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) struct Ucc {
+  columns : Array[String]
+  deletions : Array[@dependency.Deletion]
+}
+#deprecated
+pub fn Ucc::equal(Self, Self) -> Bool
+#deprecated
+pub fn Ucc::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn Ucc::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

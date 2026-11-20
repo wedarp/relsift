@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift"
+
+import {
+  "moonbitlang/core/debug",
+  "wedarp/relsift/budget",
+  "wedarp/relsift/dependency",
+  "wedarp/relsift/model",
+  "wedarp/relsift/unique",
+}
+
+// Values
+pub fn discover(@model.Table, limits? : @budget.Limits) -> Discovery raise
+
+pub fn verify_fd(@model.Table, @dependency.Fd) -> Bool raise
+
+pub fn verify_ucc(@model.Table, @unique.Ucc) -> Bool raise
+
+// Errors
+
+// Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) struct Discovery {
+  table_id : String
+  row_count : Int32
+  column_count : Int32
+  limits : @budget.Limits
+  status : @budget.Status
+  fd_complete : Bool
+  ucc_complete : Bool
+  fds : Array[@dependency.Fd]
+  uccs : Array[@unique.Ucc]
+  usage : @budget.Usage
+  degenerate : Bool
+}
+#deprecated
+pub fn Discovery::equal(Self, Self) -> Bool
+#deprecated
+pub fn Discovery::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn Discovery::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

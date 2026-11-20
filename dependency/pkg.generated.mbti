@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift/dependency"
+
+import {
+  "moonbitlang/core/debug",
+  "wedarp/relsift/partition",
+  "wedarp/relsift/verify",
+}
+
+// Values
+pub fn discover(@partition.Index, Array[Fd]) -> Unit raise
+
+// Errors
+
+// Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) struct Deletion {
+  removed : String
+  pair : @verify.Pair
+}
+#deprecated
+pub fn Deletion::equal(Self, Self) -> Bool
+#deprecated
+pub fn Deletion::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn Deletion::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct Fd {
+  lhs : Array[String]
+  rhs : String
+  deletions : Array[Deletion]
+}
+#deprecated
+pub fn Fd::equal(Self, Self) -> Bool
+#deprecated
+pub fn Fd::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn Fd::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
