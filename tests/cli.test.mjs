@@ -1,11 +1,15 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const executable = resolve('_build/native/release/build/cmd/relsift', process.platform === 'win32' ? 'relsift.exe' : 'relsift');
+// The pinned MoonBit toolchain also emits a .exe suffix for Linux ELF binaries.
+const executable = ['relsift.exe', 'relsift']
+  .map(name => resolve('_build/native/release/build/cmd/relsift', name))
+  .find(existsSync);
+assert.ok(executable, 'Build the native release CLI before running integration tests.');
 const temporary = mkdtempSync(join(tmpdir(), 'relsift-cli-'));
 const created = [];
 function fixture(name, content) {
