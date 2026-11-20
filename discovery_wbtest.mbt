@@ -58,6 +58,14 @@ fn oracle(t : @model.Table) -> (Array[String], Array[String]) raise {
 fn compare_oracle(t : @model.Table) -> Unit raise {
   let result = discover(t)
   assert_eq(result.status, @budget.CompleteInDomain)
+  if signatures(result) != oracle(t) {
+    let reduced = shrink(t, candidate => {
+      signatures(discover(candidate)) != oracle(candidate)
+    })
+    fail(
+      "differential mismatch, reduced snapshot: " + @debug.to_string(reduced),
+    )
+  }
   assert_eq(signatures(result), oracle(t))
   for fd in result.fds {
     assert_true(verify_fd(t, fd))
@@ -65,6 +73,73 @@ fn compare_oracle(t : @model.Table) -> Unit raise {
   for ucc in result.uccs {
     assert_true(verify_ucc(t, ucc))
   }
+}
+
+///|
+/// Greedy one-deletion-minimal reproducer; this is not a global minimum-size claim.
+fn shrink(
+  input : @model.Table,
+  fails : (@model.Table) -> Bool raise,
+) -> @model.Table raise {
+  let mut current = input
+  let mut changed = true
+  while changed {
+    changed = false
+    let rows = current.rows()
+    for removed in rows {
+      let candidate = @model.table(
+        current.id,
+        current.columns(),
+        rows.filter(r => r.id != removed.id),
+        policy=current.policy,
+      )
+      if fails(candidate) {
+        current = candidate
+        changed = true
+        break
+      }
+    }
+    if changed {
+      continue
+    }
+    let columns = current.columns()
+    for c in 0..<columns.length() {
+      let candidate = @model.table(
+        current.id,
+        columns.filter(column => column.id != columns[c].id),
+        current
+        .rows()
+        .map(r => {
+          id: r.id,
+          cells: r.cells
+          .mapi((i, v) => (i, v))
+          .filter(v => v.0 != c)
+          .map(v => v.1),
+        }),
+        policy=current.policy,
+      )
+      if fails(candidate) {
+        current = candidate
+        changed = true
+        break
+      }
+    }
+  }
+  current
+}
+
+///|
+test "failure reducer keeps its predicate while removing irrelevant rows and columns" {
+  let t = snapshot(
+    [[Some("irrelevant"), Some("no")], [Some("other"), Some("witness")]],
+    2,
+  )
+  let reduced = shrink(t, candidate => {
+    candidate.rows().any(r => r.cells.contains(Some("witness")))
+  })
+  assert_eq(reduced.row_count(), 1)
+  assert_eq(reduced.column_count(), 1)
+  assert_eq(reduced.rows()[0].cells, [Some("witness")])
 }
 
 ///|
@@ -199,6 +274,13 @@ test "row and column reorder, renaming and deterministic witnesses" {
   let mapped_keys = original.uccs.map(k => k.columns.map(id => "new_" + id))
   assert_eq(mapped_fds, discover(renamed).fds.map(f => (f.lhs, f.rhs)))
   assert_eq(mapped_keys, discover(renamed).uccs.map(k => k.columns))
+  let swapped_names = @model.table(
+    "t",
+    [{ id: "z", name: "First", }, { id: "a", name: "Second", }],
+    t.rows(),
+    policy=@model.NullAsValue,
+  )
+  assert_eq(discover(swapped_names).uccs[0].columns, ["a", "z"])
   for work in 0..<200 {
     let partial = discover(t, limits={
       ..@budget.defaults(),
@@ -212,4 +294,14 @@ test "row and column reorder, renaming and deterministic witnesses" {
     }
     assert_true(partial.usage.work <= work.to_int64())
   }
+}
+
+///|
+test "zero work stops empty-table indexing and integer counters retain range" {
+  let empty = snapshot([], 3)
+  let stopped = discover(empty, limits={ ..@budget.defaults(), max_work: 0L, })
+  assert_eq(stopped.status, @budget.Partial("max_work"))
+  assert_eq(stopped.usage.partitions, 0L)
+  assert_eq(stopped.usage.cache_hits, 0L)
+  assert_true(stopped.fds.is_empty())
 }

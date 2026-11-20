@@ -8,6 +8,9 @@ pub(all) struct Ucc {
 ///|
 /// Row multiplicity is preserved by the index. Empty-set uniqueness is included.
 pub fn discover(idx : @partition.Index, out : Array[Ucc]) -> Unit raise {
+  if !out.is_empty() {
+    raise @model.Invalid("discovery sink must initially be empty")
+  }
   let cols = idx.table.columns()
   let m = idx.meter
   let max_width = Int32::min(cols.length(), m.limits.max_ucc_width)

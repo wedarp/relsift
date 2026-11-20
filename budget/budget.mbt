@@ -38,8 +38,8 @@ pub(all) struct Usage {
   candidates : Int32
   work : Int64
   results : Int32
-  partitions : Int32
-  cache_hits : Int32
+  partitions : Int64
+  cache_hits : Int64
 }
 
 ///|
@@ -48,8 +48,8 @@ pub struct Meter {
   priv mut candidates : Int32
   priv mut work : Int64
   priv mut results : Int32
-  priv mut partitions : Int32
-  priv mut cache_hits : Int32
+  priv mut partitions : Int64
+  priv mut cache_hits : Int64
 }
 
 ///|

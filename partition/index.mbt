@@ -17,7 +17,9 @@ pub struct Index {
 
 ///|
 pub fn index(t : @model.Table, meter : @budget.Meter) -> Index raise {
-  meter.charge(t.row_count().to_int64() * (t.column_count().to_int64() + 1L))
+  meter.charge(
+    (t.row_count().to_int64() + 1L) * (t.column_count().to_int64() + 1L),
+  )
   let rows = t.rows()
   let encoded = []
   let cache : Map[Array[Int32], Partition] = Map([])

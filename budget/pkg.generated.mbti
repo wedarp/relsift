@@ -65,8 +65,8 @@ pub(all) struct Usage {
   candidates : Int32
   work : Int64
   results : Int32
-  partitions : Int32
-  cache_hits : Int32
+  partitions : Int64
+  cache_hits : Int64
 }
 #deprecated
 pub fn Usage::equal(Self, Self) -> Bool

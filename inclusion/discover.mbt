@@ -53,7 +53,7 @@ pub fn discover(
     let domains : Array[Domain] = []
     for t in ordered {
       meter.charge(
-        t.row_count().to_int64() * (t.column_count().to_int64() + 1L),
+        (t.row_count().to_int64() + 1L) * (t.column_count().to_int64() + 1L),
       )
       let rows = t.rows()
       for c, column in t.columns() {

@@ -1,4 +1,5 @@
 import {
+  "wedarp/relsift/model",
   "wedarp/relsift/partition",
   "wedarp/relsift/budget",
   "wedarp/relsift/verify",

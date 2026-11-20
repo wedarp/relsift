@@ -1,0 +1,64 @@
+# CLI 与结果协议，版本 1
+
+```sh
+moon run cmd/relsift --target native -- discover INPUT.csv --table-id export
+moon run cmd/relsift --target native -- discover INPUT.json
+moon run cmd/relsift --target native -- ind INPUT.json
+moon run cmd/relsift --target native -- verify INPUT.json RULE.json
+```
+
+`--target wasm` 也可在 Moonrun 宿主中运行 CLI。JavaScript 和 wasm-gc 用于核心库与无 IO 示例，CLI 未声明支持这两个后端。原生二进制编译后可直接执行，无需 MoonBit 编译器或 Node.js。
+
+输入由小写扩展名 `.csv`、`.json` 选择。CLI 不写回输入，不自动修复，也不自行创建输出文件；结果写到标准输出，调用者可自行重定向。`--table-id` 只作用于 CSV。默认格式为 JSON，可选 `--format text`。验证器文本格式会先给简短结论，再保留 JSON 反例摘要。
+
+发现预算可用 `--max-lhs`、`--max-ucc-width`、`--max-candidates`、`--max-work`、`--max-results` 显式设置。每个选项必须提供一个值，未知选项拒绝。
+
+## 状态和退出码
+
+| 退出码 | `status.kind` | 含义 |
+|---:|---|---|
+| 0 | `complete_in_domain` | 发现搜索走完声明域 |
+| 0 | `validated`，`holds=true` | 指定约束独立验证成立 |
+| 1 | `validated`，`holds=false` | 指定约束不成立，附具体反例/孤儿摘要 |
+| 2 | `failed` | 输入非法、IO 或其他执行失败；不提供发现完成结论 |
+| 3 | `partial` | 预算耗尽，仅保留已经完整证明的结果 |
+
+所有 CLI JSON 封装带 `schema_version:1`。多表发现的顶层状态汇总每表状态；顶层部分结果原因为 `table_budget`，具体耗尽项在相应表的 `status.reason` 中。不能只读 `fds`/`uccs` 是否为空而忽略状态和域。
+
+## 发现记录
+
+每表记录包含表 ID、行列数、NULL 策略、`limits`、`usage`、`fd_complete`、`ucc_complete`、`degenerate`、`fds`、`uccs`。
+
+```json
+{
+  "lhs": ["product_id"],
+  "rhs": "product_name",
+  "minimality": "proven",
+  "deletions": [{
+    "removed": "product_id",
+    "pair": {"first": "r1", "second": "r2"}
+  }]
+}
+```
+
+UCC 使用 `columns`，删除证据结构相同。空左侧和空唯一组合正常使用空证据数组。列集合按列 ID 字典序排列；FD 按左侧宽度、集合遍历顺序、右侧 ID 排列，UCC 按宽度和集合遍历顺序排列。行 ID 顺序固定证据选择。JSON 对象键递归字典序排列，数组保留上述语义顺序。表集合和 IND 的表/列对也按 ID 排列。
+
+`work`、`max_work`、`partitions`、`cache_hits` 是 Int64，以十进制 JSON **字符串**输出，避免消费方丢失整数精度。其他计数为 Int32 数字。固定输入和参数产生确定性结果；不同版本的工作单位调整不保证计数不变。
+
+IND 每条记录含 `source_table`、`source_column`、`target_table`、`target_column`、`source_distinct`、`target_distinct`、`target_unique`。不默认输出失败列对。
+
+## 指定约束验证请求
+
+```json
+{"kind":"fd","table":"orders","lhs":["order_id"],"rhs":"product_id"}
+```
+
+```json
+{"kind":"unique","table":"orders","columns":["order_id","line_no"]}
+```
+
+```json
+{"kind":"ind","source_table":"products","source_column":"product_id","target_table":"orders","target_column":"product_id","orphan_limit":3}
+```
+
+FD 和 UCC 返回 `holds` 及 `counterexample`；成立时反例为 JSON null，失败时给不同行 ID。FD 的右侧必须不属于左侧；列 ID 重复、缺失列及未知表拒绝。IND 请求的 `orphan_limit` 可省略，默认 10，非负。返回精确的孤儿不同值数量、最多指定数量的字面值（或 JSON null）和省略数量，摘要截断不改变 `holds`。孤儿值按稳定行 ID 的首次出现顺序保存，不默认泄露所有失败列对。

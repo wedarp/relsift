@@ -1,0 +1,9 @@
+import {
+  "wedarp/relsift",
+  "wedarp/relsift/model",
+  "wedarp/relsift/budget",
+  "wedarp/relsift/codec",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")

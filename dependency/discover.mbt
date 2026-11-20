@@ -17,6 +17,9 @@ pub(all) struct Fd {
 /// Append only fully proved minimal nontrivial FDs, in increasing LHS width.
 /// Exhausted propagates; the caller may keep the already appended results.
 pub fn discover(idx : @partition.Index, out : Array[Fd]) -> Unit raise {
+  if !out.is_empty() {
+    raise @model.Invalid("discovery sink must initially be empty")
+  }
   let cols = idx.table.columns()
   let m = idx.meter
   let width = cols.length()

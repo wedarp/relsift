@@ -81,3 +81,46 @@ test "inclusion budget truncation retains only independently valid relations" {
     },
   )
 }
+
+///|
+test "seeded multitable inclusion differential and policy mismatch" {
+  let mut seed = 20261120U
+  fn next() -> UInt32 {
+    seed = seed * 1664525U + 1013904223U
+    seed
+  }
+  let values = [None, Some(""), Some("01"), Some("1"), Some("é"), Some("é")]
+  for _ in 0..<100 {
+    let tables = Array::makei(3, i => {
+      one(
+        "t\{i}",
+        Array::makei((next() % 6U).reinterpret_as_int(), _ => {
+          values[(next() % 6U).reinterpret_as_int()]
+        }),
+      )
+    })
+    let actual = discover(tables)
+    assert_eq(actual.status, @budget.CompleteInDomain)
+    for s in tables {
+      for t in tables {
+        if s.id != t.id {
+          assert_eq(
+            actual.relations.any(r => {
+              r.source_table == s.id && r.target_table == t.id
+            }),
+            @verify.inclusion(s, "c", t, "c").holds,
+          )
+        }
+      }
+    }
+  }
+  let reject = @model.table("reject", [{ id: "c", name: "c", }], [])
+  assert_true(
+    try {
+      ignore(discover([reject, one("equal", [])]))
+      false
+    } catch {
+      _ => true
+    },
+  )
+}
