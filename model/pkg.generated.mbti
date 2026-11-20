@@ -1,0 +1,77 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift/model"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn table(String, Array[Column], Array[Row], policy? : NullPolicy) -> Table raise InputError
+
+// Errors
+#derive(Eq, @debug.Debug)
+pub(all) suberror InputError {
+  Invalid(String)
+}
+#deprecated
+pub fn InputError::equal(Self, Self) -> Bool
+#deprecated
+pub fn InputError::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn InputError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) struct Column {
+  id : String
+  name : String
+}
+#deprecated
+pub fn Column::equal(Self, Self) -> Bool
+#deprecated
+pub fn Column::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn Column::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum NullPolicy {
+  RejectNull
+  NullAsValue
+}
+#deprecated
+pub fn NullPolicy::equal(Self, Self) -> Bool
+#deprecated
+pub fn NullPolicy::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn NullPolicy::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct Row {
+  id : String
+  cells : Array[String?]
+}
+#deprecated
+pub fn Row::equal(Self, Self) -> Bool
+#deprecated
+pub fn Row::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn Row::to_repr(Self) -> @debug.Repr
+
+#derive(@debug.Debug)
+pub struct Table {
+  id : String
+  policy : NullPolicy
+  // private fields
+}
+pub fn Table::column_count(Self) -> Int32
+pub fn Table::columns(Self) -> Array[Column]
+pub fn Table::position(Self, String) -> Int32 raise InputError
+pub fn Table::positions(Self, Array[String]) -> Array[Int32] raise InputError
+pub fn Table::row_count(Self) -> Int32
+pub fn Table::rows(Self) -> Array[Row]
+#deprecated
+pub fn Table::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

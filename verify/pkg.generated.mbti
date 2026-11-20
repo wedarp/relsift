@@ -1,0 +1,64 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift/verify"
+
+import {
+  "moonbitlang/core/debug",
+  "wedarp/relsift/model",
+}
+
+// Values
+pub fn check_pair(@model.Table, Array[String], Pair, rhs? : String?) -> Bool raise @model.InputError
+
+pub fn fd(@model.Table, Array[String], String) -> Verdict raise @model.InputError
+
+pub fn inclusion(@model.Table, String, @model.Table, String, orphan_limit? : Int32) -> InclusionVerdict raise @model.InputError
+
+pub fn unique(@model.Table, Array[String]) -> Verdict raise @model.InputError
+
+// Errors
+
+// Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) struct InclusionVerdict {
+  holds : Bool
+  source_distinct : Int32
+  target_distinct : Int32
+  target_unique : Bool
+  orphan_count : Int32
+  orphans : Array[String?]
+  orphans_omitted : Int32
+}
+#deprecated
+pub fn InclusionVerdict::equal(Self, Self) -> Bool
+#deprecated
+pub fn InclusionVerdict::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn InclusionVerdict::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct Pair {
+  first : String
+  second : String
+}
+#deprecated
+pub fn Pair::equal(Self, Self) -> Bool
+#deprecated
+pub fn Pair::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn Pair::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct Verdict {
+  holds : Bool
+  counterexample : Pair?
+}
+#deprecated
+pub fn Verdict::equal(Self, Self) -> Bool
+#deprecated
+pub fn Verdict::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn Verdict::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
