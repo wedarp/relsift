@@ -1,0 +1,4 @@
+import {
+  "wedarp/relsift/model",
+  "moonbitlang/core/debug",
+}

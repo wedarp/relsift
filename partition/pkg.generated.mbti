@@ -1,0 +1,29 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift/partition"
+
+import {
+  "wedarp/relsift/budget",
+  "wedarp/relsift/model",
+  "wedarp/relsift/verify",
+}
+
+// Values
+pub fn index(@model.Table, @budget.Meter) -> Index raise
+
+// Errors
+
+// Types and methods
+pub struct Index {
+  table : @model.Table
+  meter : @budget.Meter
+  // private fields
+}
+pub fn Index::fd(Self, Array[Int32], Int32) -> Bool raise
+pub fn Index::unique(Self, Array[Int32]) -> Bool raise
+pub fn Index::witness(Self, Array[Int32], rhs? : Int32?) -> @verify.Pair? raise
+
+type Partition
+
+// Type aliases
+
+// Traits
