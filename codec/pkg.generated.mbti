@@ -1,0 +1,54 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift/codec"
+
+import {
+  "moonbitlang/core/json",
+  "wedarp/relsift",
+  "wedarp/relsift/budget",
+  "wedarp/relsift/inclusion",
+  "wedarp/relsift/model",
+  "wedarp/relsift/verify",
+}
+
+// Values
+pub fn array(@json.Json) -> Array[@json.Json] raise @model.InputError
+
+pub fn canonical(@json.Json) -> String
+
+pub fn discovery(@relsift.Discovery) -> @json.Json
+
+pub fn explain(@relsift.Discovery) -> String
+
+pub fn field(Map[String, @json.Json], String) -> @json.Json raise @model.InputError
+
+pub fn inclusion(@inclusion.Report) -> @json.Json
+
+pub fn inclusion_verdict(@verify.InclusionVerdict) -> @json.Json
+
+pub fn object(@json.Json) -> Map[String, @json.Json] raise @model.InputError
+
+pub fn only(Map[String, @json.Json], Array[String]) -> Unit raise @model.InputError
+
+pub fn parse_csv(String, String) -> @model.Table raise
+
+pub fn parse_json(String) -> @json.Json raise
+
+pub fn parse_tables(String) -> Array[@model.Table] raise
+
+pub fn policy(@model.NullPolicy) -> String
+
+pub fn status(@budget.Status) -> @json.Json
+
+pub fn string(@json.Json) -> String raise @model.InputError
+
+pub fn validate(Array[@model.Table], String) -> @json.Json raise
+
+pub fn verdict(@verify.Verdict) -> @json.Json
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

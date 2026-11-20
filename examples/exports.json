@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "null_policy": "reject",
+  "tables": [
+    {
+      "id": "orders",
+      "columns": [
+        {"id": "order_id", "name": "order_id"},
+        {"id": "product_id", "name": "product_id"}
+      ],
+      "rows": [
+        {"id": "o1", "cells": ["O1", "P1"]},
+        {"id": "o2", "cells": ["O2", "P2"]}
+      ]
+    },
+    {
+      "id": "products",
+      "columns": [
+        {"id": "product_id", "name": "product_id"},
+        {"id": "product_name", "name": "product_name"}
+      ],
+      "rows": [
+        {"id": "p1", "cells": ["P1", "Pen"]},
+        {"id": "p2", "cells": ["P2", "Book"]},
+        {"id": "p3", "cells": ["P3", "Cup"]}
+      ]
+    }
+  ]
+}

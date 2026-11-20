@@ -13,6 +13,7 @@ pub(all) struct Ind {
 ///|
 #derive(Eq, @debug.Debug)
 pub(all) struct Report {
+  null_policy : @model.NullPolicy?
   status : @budget.Status
   limits : @budget.Limits
   usage : @budget.Usage
@@ -36,7 +37,7 @@ pub fn discover(
 ) -> Report raise {
   let meter = @budget.meter(limits)
   let ordered = tables.copy()
-  ordered.sort_by((a, b) => a.id.compare(b.id))
+  ordered.sort_by((a, b) => a.id.lexical_compare(b.id))
   let seen : Map[String, Bool] = Map([])
   for t in ordered {
     if seen.contains(t.id) {
@@ -110,7 +111,17 @@ pub fn discover(
   } catch {
     @budget.Exhausted(reason) => @budget.Partial(reason)
   }
-  { status, limits, usage: meter.usage(), relations, }
+  {
+    null_policy: if ordered.is_empty() {
+      None
+    } else {
+      Some(ordered[0].policy)
+    },
+    status,
+    limits,
+    usage: meter.usage(),
+    relations,
+  }
 }
 
 ///|

@@ -4,6 +4,7 @@ pub(all) struct Discovery {
   table_id : String
   row_count : Int32
   column_count : Int32
+  null_policy : @model.NullPolicy
   limits : @budget.Limits
   status : @budget.Status
   fd_complete : Bool
@@ -40,6 +41,7 @@ pub fn discover(
     table_id: t.id,
     row_count: t.row_count(),
     column_count: t.column_count(),
+    null_policy: t.policy,
     limits,
     status,
     fd_complete,

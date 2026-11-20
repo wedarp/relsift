@@ -1,0 +1,8 @@
+import {
+  "wedarp/relsift",
+  "wedarp/relsift/model",
+  "wedarp/relsift/codec",
+  "wedarp/relsift/verify",
+}
+
+pkgtype(kind: "executable")

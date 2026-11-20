@@ -59,7 +59,7 @@ pub fn table(
     names[c.name] = true
   }
   let order = Array::makei(columns.length(), i => i)
-  order.sort_by((a, b) => columns[a].id.compare(columns[b].id))
+  order.sort_by((a, b) => columns[a].id.lexical_compare(columns[b].id))
   let ordered_columns = order.map(i => columns[i])
   let row_ids : Map[String, Bool] = Map([])
   let copied : Array[Row] = []
@@ -76,7 +76,7 @@ pub fn table(
     }
     copied.push({ id: row.id, cells: order.map(i => row.cells[i]), })
   }
-  copied.sort_by((a, b) => a.id.compare(b.id))
+  copied.sort_by((a, b) => a.id.lexical_compare(b.id))
   { id, policy, columns_data: ordered_columns, rows_data: copied, }
 }
 

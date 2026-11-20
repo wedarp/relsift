@@ -32,6 +32,7 @@ pub fn Ind::to_repr(Self) -> @debug.Repr
 
 #derive(Eq, @debug.Debug)
 pub(all) struct Report {
+  null_policy : @model.NullPolicy?
   status : @budget.Status
   limits : @budget.Limits
   usage : @budget.Usage
