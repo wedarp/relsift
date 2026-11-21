@@ -17,6 +17,8 @@ moon run cmd/relsift --target native -- discover-stepped INPUT.json --step-candi
 
 发现预算可用 `--max-lhs`、`--max-ucc-width`、`--max-candidates`、`--max-work`、`--max-results` 显式设置。每个选项必须提供一个值，未知选项拒绝。
 
+JSON 中的 Int32 计数、宽度和 `orphan_limit` 必须是范围内的非负整数值，小数不会截断后继续执行；例如 1.0 表示整数 1，而 1.5 非法。Int64 字段必须是无前导零、无正号的非负十进制字符串。
+
 ## 状态和退出码
 
 | 退出码 | `status.kind` | 含义 |

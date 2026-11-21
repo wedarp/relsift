@@ -121,10 +121,7 @@ pub fn diagnose(
       ])
       let effective = match rule.get("orphan_limit") {
         Some(v) => {
-          let limit : Int32 = @json.from_json(v)
-          if limit < 0 {
-            raise @model.Invalid("negative orphan limit")
-          }
+          let limit = natural(v)
           { ..limits, max_results: Int32::min(limits.max_results, limit), }
         }
         None => limits

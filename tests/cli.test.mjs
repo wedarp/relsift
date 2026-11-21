@@ -169,3 +169,14 @@ test('stepped CLI retains full proofs and honors cumulative resource limits', ()
   assert.equal(partial.tables[0].usage.candidates, 3);
   assert.equal(run(['discover-stepped', ...orderArgs.slice(1), '--step-candidates', '0'], 2).json.status.kind, 'failed');
 });
+
+test('fractional integer fields fail instead of being silently truncated', () => {
+  const report = run(orderArgs).json;
+  report.tables[0].limits.max_lhs = 2.5;
+  const certificate = fixture('fractional-report.json', JSON.stringify(report));
+  assert.equal(run(['verify-report', 'examples/orders.csv', certificate, '--table-id', 'orders'], 2).json.status.kind, 'failed');
+  const rule = fixture('fractional-rule.json', JSON.stringify({ kind: 'ind', source_table: 'products', source_column: 'product_id', target_table: 'orders', target_column: 'product_id', orphan_limit: 0.5 }));
+  for (const command of ['verify', 'diagnose']) {
+    assert.equal(run([command, 'examples/exports.json', rule], 2).json.status.kind, 'failed');
+  }
+});

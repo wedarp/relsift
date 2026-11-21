@@ -47,7 +47,7 @@ pub fn validate(tables : Array[@model.Table], request : String) -> Json raise {
         "orphan_limit",
       ])
       let orphan_limit : Int32 = match rule.get("orphan_limit") {
-        Some(v) => @json.from_json(v)
+        Some(v) => natural(v)
         None => 10
       }
       inclusion_verdict(

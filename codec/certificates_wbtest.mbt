@@ -86,6 +86,62 @@ test "strict certificate parsing rejects schema and counter tampering" {
 }
 
 ///|
+test "all report integer fields reject fractions without truncation" {
+  let d = @engine.discover(certificate_fixture())
+  let original = canonical(envelope(d))
+  for
+    key in [
+      "row_count", "column_count", "max_lhs", "max_ucc_width", "max_candidates",
+      "max_results", "results", "candidates",
+    ] {
+    let root = object(parse_json(original))
+    let record = object(array(field(root, "tables"))[0])
+    let container = if key.has_prefix("max_") {
+      object(field(record, "limits"))
+    } else if key == "candidates" || key == "results" {
+      object(field(record, "usage"))
+    } else {
+      record
+    }
+    for fraction in [-0.5, 0.5, 1.75] {
+      container[key] = Json::number(fraction)
+      let rejected = try {
+        ignore(parse_discovery_report(canonical(Json::object(root))))
+        false
+      } catch {
+        _ => true
+      }
+      assert_true(rejected)
+    }
+  }
+  assert_eq(natural(parse_json("1.0")), 1)
+  assert_eq(natural(parse_json("1e2")), 100)
+}
+
+///|
+test "orphan summary limits use the same exact integer contract" {
+  let t = certificate_fixture()
+  for fraction in ["0.5", "-0.5", "1.75"] {
+    let request = "{\"kind\":\"ind\",\"source_table\":\"t\",\"source_column\":\"a\",\"target_table\":\"t\",\"target_column\":\"b\",\"orphan_limit\":" +
+      fraction +
+      "}"
+    let validation_rejected = try {
+      ignore(validate([t], request))
+      false
+    } catch {
+      _ => true
+    }
+    let diagnosis_rejected = try {
+      ignore(diagnose([t], request))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(validation_rejected && diagnosis_rejected)
+  }
+}
+
+///|
 test "partial, empty and nullable certificates retain their meaning" {
   let nullable = @model.table(
     "n",

@@ -8,7 +8,7 @@ pub struct EvidenceReport {
 ///|
 fn natural(value : Json) -> Int32 raise {
   let n : Int32 = @json.from_json(value)
-  if n < 0 {
+  if n < 0 || value != Json::number(n.to_double()) {
     raise @model.Invalid("expected nonnegative integer")
   }
   n
