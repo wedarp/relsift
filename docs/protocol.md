@@ -5,6 +5,10 @@ moon run cmd/relsift --target native -- discover INPUT.csv --table-id export
 moon run cmd/relsift --target native -- discover INPUT.json
 moon run cmd/relsift --target native -- ind INPUT.json
 moon run cmd/relsift --target native -- verify INPUT.json RULE.json
+moon run cmd/relsift --target native -- diagnose INPUT.json RULE.json
+moon run cmd/relsift --target native -- verify-report INPUT.json REPORT.json
+moon run cmd/relsift --target native -- compare INPUT.json BASELINE.json
+moon run cmd/relsift --target native -- discover-stepped INPUT.json --step-candidates 100
 ```
 
 `--target wasm` 也可在 Moonrun 宿主中运行 CLI。JavaScript 和 wasm-gc 用于核心库与无 IO 示例，CLI 未声明支持这两个后端。原生二进制编译后可直接执行，无需 MoonBit 编译器或 Node.js。
@@ -22,6 +26,8 @@ moon run cmd/relsift --target native -- verify INPUT.json RULE.json
 | 1 | `validated`，`holds=false` | 指定约束不成立，附具体反例/孤儿摘要 |
 | 2 | `failed` | 输入非法、IO 或其他执行失败；不提供发现完成结论 |
 | 3 | `partial` | 预算耗尽，仅保留已经完整证明的结果 |
+
+`diagnose` 的完整状态使用 `complete_in_domain`，成立退出 0，失败退出 1，计数未完成退出 3，详见[诊断字段](diagnostics.md)。`verify-report` 使用 `rechecked`，证据有效退出 0、无效退出 1；[证据复核](certificates.md)不证明完整性。`compare` 完成所列基线检查后退出 0；出现反例或缺列退出 1；部分检查退出 3，详见[回归协议](regression.md)。`discover-stepped` 返回普通发现记录，具体语义见[分步搜索](sessions.md)。
 
 所有 CLI JSON 封装带 `schema_version:1`。多表发现的顶层状态汇总每表状态；顶层部分结果原因为 `table_budget`，具体耗尽项在相应表的 `status.reason` 中。不能只读 `fds`/`uccs` 是否为空而忽略状态和域。
 

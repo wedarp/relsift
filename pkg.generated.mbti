@@ -12,6 +12,8 @@ import {
 // Values
 pub fn discover(@model.Table, limits? : @budget.Limits) -> Discovery raise
 
+pub fn session(@model.Table, limits? : @budget.Limits) -> Session raise
+
 pub fn verify_fd(@model.Table, @dependency.Fd) -> Bool raise
 
 pub fn verify_ucc(@model.Table, @unique.Ucc) -> Bool raise
@@ -40,6 +42,19 @@ pub fn Discovery::equal(Self, Self) -> Bool
 pub fn Discovery::not_equal(Self, Self) -> Bool
 #deprecated
 pub fn Discovery::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Progress {
+  Running
+  Finished
+  BudgetExhausted(String)
+}
+
+pub struct Session {
+  // private fields
+}
+pub fn Session::progress(Self) -> Progress
+pub fn Session::snapshot(Self) -> Discovery
+pub fn Session::step(Self, Int32) -> Progress raise
 
 // Type aliases
 

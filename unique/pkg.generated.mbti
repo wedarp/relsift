@@ -8,6 +8,8 @@ import {
 }
 
 // Values
+pub fn consider(@partition.Index, Array[Int32], Array[Ucc]) -> Unit raise
+
 pub fn discover(@partition.Index, Array[Ucc]) -> Unit raise
 
 // Errors

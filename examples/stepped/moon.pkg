@@ -1,0 +1,6 @@
+import {
+  "wedarp/relsift" @engine,
+  "wedarp/relsift/codec",
+}
+
+pkgtype(kind: "executable")

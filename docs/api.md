@@ -74,6 +74,7 @@ fn main raise {
 | `/inclusion` | `discover(Array[Table],limits?) -> Report` |
 | `/verify` | `fd`、`unique`、`inclusion`、`check_pair`，均为独立参考实现 |
 | `/codec` | `parse_csv`、`parse_tables`、`validate`、结果 JSON 转换、`canonical`、`explain` |
+| `/regression` | `compare(Table, Discovery, limits?)`，对新快照重新判定旧规则 |
 
 完整签名由各包的 `pkg.generated.mbti` 给出，用 `moon info` 生成。常规调用应从根包和 `/inclusion` 进入；低层分区/发现入口供自定义实验使用。分区的列位置必须严格递增、无重复且在范围内；FD 右侧必须在范围内且不在左侧。
 
@@ -84,6 +85,10 @@ fn main raise {
 `verify_fd` 与 `verify_ucc` 同时检查约束成立和整组最小性证据。`verify.check_pair(table,parent,pair,rhs=Some(column))` 只检查某个具体 FD 反例；省略 `rhs` 时检查父集合上的碰撞。不合法的列 ID 是输入错误，伪造或缺失行对返回 false。
 
 独立单约束验证返回 `Verdict { holds, counterexample }`。`verify.inclusion(source,source_column,target,target_column,orphan_limit=10)` 返回成立状态、不同值数量、目标唯一性、孤儿不同值总数和有界摘要；它适合复核失败候选，不会自动搜索其他列对。
+
+根包另提供 `session(Table,limits?)`、`Session::step(quota)`、`Session::snapshot()` 和 `Session::progress()`，见[分步搜索](sessions.md)。快照中的结果数组独立于会话内部状态。
+
+`verify.diagnose_fd`、`diagnose_unique`、`diagnose_inclusion` 提供有预算的[冲突来源诊断](diagnostics.md)。`codec.parse_discovery_report` 与 `recheck_report` 支持[序列化证据复核](certificates.md)；`codec.compare_report` 提供多表[快照回归](regression.md)。低层 `dependency.consider` 和 `unique.consider` 用于单候选实验，输入位置必须有序无重复，已有输出数组必须只含在同一快照上证明的最小规则；不应把未验证的外部声明用作剪枝依据。
 
 ## 异常与部分结果
 

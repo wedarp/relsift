@@ -14,7 +14,7 @@ async fn read_input(path : String) -> String {
 async fn execute(args : Array[String]) -> Int32 {
   if args.length() < 3 {
     raise @model.Invalid(
-      "usage: relsift discover|ind|verify|diagnose INPUT [RULE.json] [--format json|text] [--table-id ID] [--max-lhs N] [--max-ucc-width N] [--max-candidates N] [--max-work N] [--max-results N]",
+      "usage: relsift discover|discover-stepped|ind|verify|diagnose|verify-report|compare INPUT [RULE_OR_REPORT.json] [--format json|text] [--table-id ID] [--step-candidates N] [--max-lhs N] [--max-ucc-width N] [--max-candidates N] [--max-work N] [--max-results N]",
     )
   }
   let command = args[1]
@@ -26,7 +26,7 @@ async fn execute(args : Array[String]) -> Int32 {
     command == "verify-report" ||
     command == "compare" {
     if args.length() <= 3 {
-      raise @model.Invalid("verify requires RULE.json")
+      raise @model.Invalid(command + " requires RULE_OR_REPORT.json")
     }
     rule_path = Some(args[3])
     offset = 4
@@ -34,6 +34,7 @@ async fn execute(args : Array[String]) -> Int32 {
   let mut format = "json"
   let mut table_id = "table"
   let mut limits = @budget.defaults()
+  let mut step_candidates = 100
   while offset < args.length() {
     if offset + 1 >= args.length() {
       raise @model.Invalid("option requires a value")
@@ -43,6 +44,15 @@ async fn execute(args : Array[String]) -> Int32 {
     match key {
       "--format" => format = value
       "--table-id" => table_id = value
+      "--step-candidates" => {
+        if command != "discover-stepped" {
+          raise @model.Invalid("step quota requires discover-stepped")
+        }
+        step_candidates = @string.parse_int(value)
+        if step_candidates <= 0 {
+          raise @model.Invalid("CLI step quota must be positive")
+        }
+      }
       "--max-lhs" => limits = { ..limits, max_lhs: @string.parse_int(value), }
       "--max-ucc-width" =>
         limits = { ..limits, max_ucc_width: @string.parse_int(value), }
@@ -100,8 +110,18 @@ async fn execute(args : Array[String]) -> Int32 {
         1
       }
     }
-    "discover" => {
-      let results = tables.map(t => @engine.discover(t, limits~))
+    "discover" | "discover-stepped" => {
+      let results = tables.map(t => {
+        if command == "discover" {
+          @engine.discover(t, limits~)
+        } else {
+          let s = @engine.session(t, limits~)
+          while s.progress() is @engine.Running {
+            ignore(s.step(step_candidates))
+          }
+          s.snapshot()
+        }
+      })
       let mut partial = false
       for result in results {
         if result.status is @budget.Partial(_) {

@@ -30,38 +30,54 @@ pub fn discover(idx : @partition.Index, out : Array[Fd]) -> Unit raise {
         if x.contains(a) {
           continue
         }
-        m.candidate()
-        let names = x.map(c => cols[c].id)
-        let mut pruned = false
-        for known in out {
-          m.charge(known.lhs.length().to_int64() + 1L)
-          if known.rhs == cols[a].id && known.lhs.all(c => names.contains(c)) {
-            pruned = true
-            break
-          }
-        }
-        if pruned || !idx.fd(x, a) {
-          continue
-        }
-        let deletions = []
-        let mut minimal = true
-        for removed in x {
-          let parent = x.filter(c => c != removed)
-          match idx.witness(parent, rhs=Some(a)) {
-            Some(pair) => deletions.push({ removed: cols[removed].id, pair, })
-            None => {
-              minimal = false
-              break
-            }
-          }
-        }
-        if minimal {
-          m.result()
-          out.push({ lhs: names, rhs: cols[a].id, deletions, })
-        }
+        consider(idx, x, a, out)
       }
     })
   }
+}
+
+///|
+/// Evaluate one candidate against previously proved rules. Safe for stepped search.
+pub fn consider(
+  idx : @partition.Index,
+  x : Array[Int32],
+  a : Int32,
+  out : Array[Fd],
+) -> Unit raise {
+  let cols = idx.table.columns()
+  for i, c in x {
+    if i > 0 && x[i - 1] >= c {
+      raise @model.Invalid("FD positions must be strictly increasing")
+    }
+  }
+  if a < 0 ||
+    a >= cols.length() ||
+    x.contains(a) ||
+    x.any(c => c < 0 || c >= cols.length()) {
+    raise @model.Invalid("invalid FD candidate positions")
+  }
+  let m = idx.meter
+  m.candidate()
+  let names = x.map(c => cols[c].id)
+  for known in out {
+    m.charge(known.lhs.length().to_int64() + 1L)
+    if known.rhs == cols[a].id && known.lhs.all(c => names.contains(c)) {
+      return
+    }
+  }
+  if !idx.fd(x, a) {
+    return
+  }
+  let deletions = []
+  for removed in x {
+    let parent = x.filter(c => c != removed)
+    match idx.witness(parent, rhs=Some(a)) {
+      Some(pair) => deletions.push({ removed: cols[removed].id, pair, })
+      None => return
+    }
+  }
+  m.result()
+  out.push({ lhs: names, rhs: cols[a].id, deletions, })
 }
 
 ///|

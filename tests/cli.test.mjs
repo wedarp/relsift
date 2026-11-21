@@ -155,3 +155,17 @@ test('snapshot replay separates violations, lost minimality and unfinished check
   assert.ok(smaller.tables[0].checks.every(c => c.outcome.kind === 'held_nonminimal'));
   assert.equal(run([...args, '--max-candidates', '0'], 3).json.status.kind, 'partial');
 });
+
+test('stepped CLI retains full proofs and honors cumulative resource limits', () => {
+  const batch = run(orderArgs).json.tables[0];
+  for (const quota of ['1', '7', '1000']) {
+    const stepped = run(['discover-stepped', ...orderArgs.slice(1), '--step-candidates', quota]).json.tables[0];
+    assert.deepEqual(stepped.fds, batch.fds);
+    assert.deepEqual(stepped.uccs, batch.uccs);
+    assert.equal(stepped.usage.candidates, batch.usage.candidates);
+    assert.equal(stepped.usage.partitions, batch.usage.partitions);
+  }
+  const partial = run(['discover-stepped', ...orderArgs.slice(1), '--step-candidates', '1', '--max-candidates', '3'], 3).json;
+  assert.equal(partial.tables[0].usage.candidates, 3);
+  assert.equal(run(['discover-stepped', ...orderArgs.slice(1), '--step-candidates', '0'], 2).json.status.kind, 'failed');
+});

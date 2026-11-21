@@ -51,6 +51,7 @@ jobs:
       - name: Execute examples and native CLI integration
         run: |
           moon run examples/library
+          moon run examples/stepped
           moon build --target native --release --deny-warn
           node --test tests/cli.test.mjs
           moon run examples/performance --target native --release

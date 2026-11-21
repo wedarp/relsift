@@ -59,6 +59,8 @@ FD 仍为 8 条，所有唯一组合失效。引擎保留实际行重数，不�
 
 接到下一份导出时，`compare INPUT BASELINE.json` 会重新检查旧规则，返回新的反例或更小成立集合，保留原报告的完成状态。见[快照回归](docs/regression.md)。
 
+需要在候选之间让出控制时，可用库的 `session`/`step` API。分区缓存、遍历位置和预算保留在同一会话中；[分步示例](docs/sessions.md)同时展示报告证据复核。
+
 ## 实验三：跨表关联候选
 
 [examples/exports.json](examples/exports.json) 含订单和产品两个有显式 ID 的表。
