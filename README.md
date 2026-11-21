@@ -55,6 +55,8 @@ FD 仍为 8 条，所有唯一组合失效。引擎保留实际行重数，不�
 
 需要查看全部冲突组、碰撞记录或孤儿来源时，可使用 `diagnose INPUT RULE.json`。它报告精确行对数量和来源行 ID，并明确区分完整计数、部分计数和未判定状态，见[精确诊断](docs/diagnostics.md)。
 
+保存的发现 JSON 可用 `verify-report INPUT REPORT.json` 独立复核规则与每条删列证据；这不证明报告没有遗漏关系。见[报告证据复核](docs/certificates.md)。
+
 ## 实验三：跨表关联候选
 
 [examples/exports.json](examples/exports.json) 含订单和产品两个有显式 ID 的表。

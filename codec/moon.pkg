@@ -4,5 +4,8 @@ import {
   "wedarp/relsift" @engine,
   "wedarp/relsift/inclusion",
   "wedarp/relsift/verify",
+  "wedarp/relsift/dependency",
+  "wedarp/relsift/unique",
   "moonbitlang/core/json",
+  "moonbitlang/core/string",
 }

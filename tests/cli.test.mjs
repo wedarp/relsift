@@ -124,3 +124,20 @@ test('bounded diagnostics aggregate exact failures and provenance', () => {
   const ind = run(['diagnose', 'examples/exports.json', 'examples/verify-ind.json'], 1).json;
   assert.deepEqual(ind.groups, [{ value: 'P3', source_rows: ['p3'] }]);
 });
+
+test('serialized report certificates can be replayed and tampering is rejected', () => {
+  const discovery = run(orderArgs).json;
+  const file = fixture('certificate.json', JSON.stringify(discovery));
+  const verified = run(['verify-report', 'examples/orders.csv', file, '--table-id', 'orders']).json;
+  assert.equal(verified.valid, true);
+  assert.equal(verified.checked_fds, 8);
+  assert.equal(verified.checked_uccs, 5);
+  assert.equal(verified.completeness_verified, false);
+  const tampered = structuredClone(discovery);
+  tampered.tables[0].fds[0].deletions[0].pair.first = 'unknown';
+  const invalid = fixture('tampered.json', JSON.stringify(tampered));
+  assert.equal(run(['verify-report', 'examples/orders.csv', invalid, '--table-id', 'orders'], 1).json.valid, false);
+  const partial = run([...orderArgs, '--max-results', '0'], 3).json;
+  const partialFile = fixture('partial-certificate.json', JSON.stringify(partial));
+  assert.equal(run(['verify-report', 'examples/orders.csv', partialFile, '--table-id', 'orders']).json.reported_status.kind, 'partial');
+});

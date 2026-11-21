@@ -37,11 +37,15 @@ pub fn only(Map[String, @json.Json], Array[String]) -> Unit raise @model.InputEr
 
 pub fn parse_csv(String, String) -> @model.Table raise
 
+pub fn parse_discovery_report(String) -> EvidenceReport raise
+
 pub fn parse_json(String) -> @json.Json raise
 
 pub fn parse_tables(String) -> Array[@model.Table] raise
 
 pub fn policy(@model.NullPolicy) -> String
+
+pub fn recheck_report(Array[@model.Table], EvidenceReport) -> @json.Json
 
 pub fn status(@budget.Status) -> @json.Json
 
@@ -56,6 +60,10 @@ pub fn verdict(@verify.Verdict) -> @json.Json
 // Errors
 
 // Types and methods
+pub struct EvidenceReport {
+  status : @budget.Status
+  tables : Array[@relsift.Discovery]
+}
 
 // Type aliases
 
