@@ -11,6 +11,7 @@ pub struct Index {
   priv rows : Array[@model.Row]
   priv encoded : Array[Array[Int32]]
   priv cache : Map[Array[Int32], Partition]
+  priv witnesses : Map[(Array[Int32], Int32?), @verify.Pair?]
   meter : @budget.Meter
   priv width : Int32
 }
@@ -51,7 +52,15 @@ pub fn index(t : @model.Table, meter : @budget.Meter) -> Index raise {
     cache[[c]] = { classes: codes, count: dictionary.length(), }
     meter.partition()
   }
-  { table: t, rows, encoded, cache, meter, width: t.column_count(), }
+  {
+    table: t,
+    rows,
+    encoded,
+    cache,
+    witnesses: Map([]),
+    meter,
+    width: t.column_count(),
+  }
 }
 
 ///|
@@ -121,14 +130,12 @@ pub fn Index::fd(
   if rhs < 0 || rhs >= self.width || columns.contains(rhs) {
     raise @model.Invalid("invalid FD right side")
   }
-  let joint = columns.copy()
-  joint.push(rhs)
-  joint.sort()
-  self.get(columns).count == self.get(joint).count
+  self.witness(columns, rhs=Some(rhs)) is None
 }
 
 ///|
-/// Linear witness extraction from equivalence classes, independent recheck is in verify.
+/// Find the first conflicting row pair, caching only completed scans.
+/// Dense class representatives avoid per-row map lookups and stop at a failure.
 pub fn Index::witness(
   self : Index,
   columns : Array[Int32],
@@ -142,22 +149,42 @@ pub fn Index::witness(
       }
     None => ()
   }
+  self.meter.charge(columns.length().to_int64() + 1L)
+  match self.witnesses.get((columns, rhs)) {
+    Some(answer) => {
+      self.meter.cache_hit()
+      return answer
+    }
+    None => ()
+  }
   let p = self.get(columns)
-  let seen : Map[Int32, Int32] = Map([])
+  if p.count == self.rows.length() {
+    self.witnesses[(columns.copy(), rhs)] = None
+    return None
+  }
+  self.meter.charge(p.count.to_int64() + 1L)
+  let first = Array::make(p.count, -1)
   for i in 0..<self.rows.length() {
     self.meter.charge(1L)
-    match seen.get(p.classes[i]) {
-      Some(j) => {
-        let differs = match rhs {
-          Some(a) => self.encoded[a][i] != self.encoded[a][j]
-          None => true
-        }
-        if differs {
-          return Some({ first: self.rows[j].id, second: self.rows[i].id, })
-        }
-      }
-      None => seen[p.classes[i]] = i
+    let group = p.classes[i]
+    let j = first[group]
+    if j < 0 {
+      first[group] = i
+      continue
+    }
+    let differs = match rhs {
+      Some(a) => self.encoded[a][i] != self.encoded[a][j]
+      None => true
+    }
+    if differs {
+      let answer = Some(@verify.Pair::{
+        first: self.rows[j].id,
+        second: self.rows[i].id,
+      })
+      self.witnesses[(columns.copy(), rhs)] = answer
+      return answer
     }
   }
+  self.witnesses[(columns.copy(), rhs)] = None
   None
 }

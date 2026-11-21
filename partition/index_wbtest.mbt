@@ -80,3 +80,78 @@ test "all binary snapshots up to three rows and columns agree with direct scans"
   }
   assert_eq(snapshots, 689)
 }
+
+///|
+fn witness_fixture() -> @model.Table raise {
+  @model.table("t", ["a", "b", "constant"].map(id => { id, name: id, }), [
+    { id: "r1", cells: [Some("x"), Some("1"), Some("fixed")], },
+    { id: "r2", cells: [Some("x"), Some("1"), Some("fixed")], },
+    { id: "r3", cells: [Some("x"), Some("2"), Some("fixed")], },
+    { id: "r4", cells: [Some("y"), Some("2"), Some("fixed")], },
+  ])
+}
+
+///|
+test "FD checks stop at witnesses without creating joint partitions" {
+  let t = witness_fixture()
+  let meter = @budget.meter(@budget.defaults())
+  let idx = index(t, meter)
+  let before = meter.usage().partitions
+  assert_true(!idx.fd([0], 1))
+  assert_eq(meter.usage().partitions, before)
+  let work = meter.usage().work
+  let pair = idx.witness([0], rhs=Some(1)).unwrap()
+  assert_eq(meter.usage().work - work, 2L)
+  assert_eq(pair, @verify.Pair::{ first: "r1", second: "r3", })
+  assert_true(@verify.check_pair(t, ["a"], pair, rhs=Some("b")))
+  assert_true(idx.fd([0], 2))
+  let constant_work = meter.usage().work
+  assert_true(idx.witness([0], rhs=Some(2)) is None)
+  assert_eq(meter.usage().work - constant_work, 2L)
+}
+
+///|
+test "witness cache owns tuple keys and separates RHS and unique queries" {
+  let t = witness_fixture()
+  let idx = index(t, @budget.meter(@budget.defaults()))
+  let columns = [0]
+  let fd = idx.witness(columns, rhs=Some(1))
+  columns.push(1)
+  assert_eq(idx.witness([0], rhs=Some(1)), fd)
+  let collision = idx.witness([0]).unwrap()
+  assert_eq(collision, @verify.Pair::{ first: "r1", second: "r2", })
+  assert_true(idx.witness([], rhs=Some(2)) is None)
+  assert_true(idx.witness([], rhs=Some(0)) is Some(_))
+  assert_true(idx.witness([]) is Some(_))
+  assert_eq(idx.witness([0], rhs=Some(1)), fd)
+}
+
+///|
+test "interrupted scans never cache an unproved absence" {
+  let t = witness_fixture()
+  let mut interruptions = 0
+  let mut completions = 0
+  for work in 40..<75 {
+    let meter = @budget.meter({
+      ..@budget.defaults(),
+      max_work: work.to_int64(),
+    })
+    let idx = index(t, meter)
+    let finished = try {
+      assert_true(idx.witness([0, 1], rhs=Some(2)) is None)
+      true
+    } catch {
+      @budget.Exhausted(_) => false
+      error => raise error
+    }
+    if finished {
+      completions += 1
+      assert_true(idx.witnesses.contains(([0, 1], Some(2))))
+    } else {
+      interruptions += 1
+      assert_true(!idx.witnesses.contains(([0, 1], Some(2))))
+    }
+    assert_true(meter.usage().work <= work.to_int64())
+  }
+  assert_true(interruptions > 0 && completions > 0)
+}
