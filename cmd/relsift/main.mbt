@@ -14,14 +14,14 @@ async fn read_input(path : String) -> String {
 async fn execute(args : Array[String]) -> Int32 {
   if args.length() < 3 {
     raise @model.Invalid(
-      "usage: relsift discover|ind|verify INPUT [RULE.json] [--format json|text] [--table-id ID] [--max-lhs N] [--max-ucc-width N] [--max-candidates N] [--max-work N] [--max-results N]",
+      "usage: relsift discover|ind|verify|diagnose INPUT [RULE.json] [--format json|text] [--table-id ID] [--max-lhs N] [--max-ucc-width N] [--max-candidates N] [--max-work N] [--max-results N]",
     )
   }
   let command = args[1]
   let path = args[2]
   let mut rule_path : String? = None
   let mut offset = 3
-  if command == "verify" {
+  if command == "verify" || command == "diagnose" {
     if args.length() <= 3 {
       raise @model.Invalid("verify requires RULE.json")
     }
@@ -132,6 +132,25 @@ async fn execute(args : Array[String]) -> Int32 {
       }
       println(@codec.canonical(report))
       if holds {
+        0
+      } else {
+        1
+      }
+    }
+    "diagnose" => {
+      let report = @codec.diagnose(
+        tables,
+        read_input(rule_path.unwrap()),
+        limits~,
+      )
+      println(@codec.canonical(report))
+      let fields = @codec.object(report)
+      let kind = @codec.string(
+        @codec.field(@codec.object(@codec.field(fields, "status")), "kind"),
+      )
+      if kind == "partial" {
+        3
+      } else if @codec.field(fields, "holds") == Json::boolean(true) {
         0
       } else {
         1

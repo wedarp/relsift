@@ -111,3 +111,16 @@ test('JSON null policy and exact lexical values survive real IO', () => {
   const bad = fixture('reject.json', JSON.stringify({ ...envelope, null_policy: 'reject' }));
   assert.equal(run(['discover', bad], 2).json.status.kind, 'failed');
 });
+
+test('bounded diagnostics aggregate exact failures and provenance', () => {
+  const report = run(['diagnose', 'examples/orders.csv', 'examples/verify-fd.json', '--table-id', 'orders'], 1).json;
+  assert.equal(report.counts_complete, true);
+  assert.equal(report.conflicting_groups, 2);
+  assert.equal(report.violating_pairs, '2');
+  assert.deepEqual(report.groups[0].rows, ['r1', 'r2']);
+  const partial = run(['diagnose', 'examples/orders.csv', 'examples/verify-fd.json', '--table-id', 'orders', '--max-results', '0'], 3).json;
+  assert.equal(partial.holds, false);
+  assert.equal(partial.counts_complete, false);
+  const ind = run(['diagnose', 'examples/exports.json', 'examples/verify-ind.json'], 1).json;
+  assert.deepEqual(ind.groups, [{ value: 'P3', source_rows: ['p3'] }]);
+});

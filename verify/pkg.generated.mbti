@@ -3,11 +3,18 @@ package "wedarp/relsift/verify"
 
 import {
   "moonbitlang/core/debug",
+  "wedarp/relsift/budget",
   "wedarp/relsift/model",
 }
 
 // Values
 pub fn check_pair(@model.Table, Array[String], Pair, rhs? : String?) -> Bool raise @model.InputError
+
+pub fn diagnose_fd(@model.Table, Array[String], String, limits? : @budget.Limits) -> FdDiagnosis raise
+
+pub fn diagnose_inclusion(@model.Table, String, @model.Table, String, limits? : @budget.Limits) -> InclusionDiagnosis raise
+
+pub fn diagnose_unique(@model.Table, Array[String], limits? : @budget.Limits) -> UniqueDiagnosis raise
 
 pub fn fd(@model.Table, Array[String], String) -> Verdict raise @model.InputError
 
@@ -18,6 +25,69 @@ pub fn unique(@model.Table, Array[String]) -> Verdict raise @model.InputError
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) struct CollisionGroup {
+  values : Array[String?]
+  rows : Array[String]
+  collision_pairs : Int64
+}
+#deprecated
+pub fn CollisionGroup::equal(Self, Self) -> Bool
+#deprecated
+pub fn CollisionGroup::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn CollisionGroup::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct ConflictGroup {
+  determinant : Array[String?]
+  rows : Array[String]
+  distinct_rhs : Int32
+  violating_pairs : Int64
+  witness : Pair
+}
+#deprecated
+pub fn ConflictGroup::equal(Self, Self) -> Bool
+#deprecated
+pub fn ConflictGroup::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn ConflictGroup::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct FdDiagnosis {
+  lhs : Array[String]
+  rhs : String
+  status : @budget.Status
+  holds : Bool?
+  conflicting_groups : Int32
+  violating_pairs : Int64
+  groups : Array[ConflictGroup]
+  usage : @budget.Usage
+}
+#deprecated
+pub fn FdDiagnosis::equal(Self, Self) -> Bool
+#deprecated
+pub fn FdDiagnosis::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn FdDiagnosis::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct InclusionDiagnosis {
+  status : @budget.Status
+  holds : Bool?
+  target_unique : Bool?
+  orphan_values : Int32
+  orphan_rows : Int32
+  groups : Array[OrphanGroup]
+  usage : @budget.Usage
+}
+#deprecated
+pub fn InclusionDiagnosis::equal(Self, Self) -> Bool
+#deprecated
+pub fn InclusionDiagnosis::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn InclusionDiagnosis::to_repr(Self) -> @debug.Repr
+
 #derive(Eq, @debug.Debug)
 pub(all) struct InclusionVerdict {
   holds : Bool
@@ -36,6 +106,18 @@ pub fn InclusionVerdict::not_equal(Self, Self) -> Bool
 pub fn InclusionVerdict::to_repr(Self) -> @debug.Repr
 
 #derive(Eq, @debug.Debug)
+pub(all) struct OrphanGroup {
+  value : String?
+  source_rows : Array[String]
+}
+#deprecated
+pub fn OrphanGroup::equal(Self, Self) -> Bool
+#deprecated
+pub fn OrphanGroup::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn OrphanGroup::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
 pub(all) struct Pair {
   first : String
   second : String
@@ -46,6 +128,24 @@ pub fn Pair::equal(Self, Self) -> Bool
 pub fn Pair::not_equal(Self, Self) -> Bool
 #deprecated
 pub fn Pair::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) struct UniqueDiagnosis {
+  columns : Array[String]
+  status : @budget.Status
+  holds : Bool?
+  collision_groups : Int32
+  excess_rows : Int32
+  collision_pairs : Int64
+  groups : Array[CollisionGroup]
+  usage : @budget.Usage
+}
+#deprecated
+pub fn UniqueDiagnosis::equal(Self, Self) -> Bool
+#deprecated
+pub fn UniqueDiagnosis::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn UniqueDiagnosis::to_repr(Self) -> @debug.Repr
 
 #derive(Eq, @debug.Debug)
 pub(all) struct Verdict {
