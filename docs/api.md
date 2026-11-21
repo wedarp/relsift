@@ -90,6 +90,8 @@ fn main raise {
 
 `verify.diagnose_fd`、`diagnose_unique`、`diagnose_inclusion` 提供有预算的[冲突来源诊断](diagnostics.md)。`codec.parse_discovery_report` 与 `recheck_report` 支持[序列化证据复核](certificates.md)；`codec.compare_report` 提供多表[快照回归](regression.md)。低层 `dependency.consider` 和 `unique.consider` 用于单候选实验，输入位置必须有序无重复，已有输出数组必须只含在同一快照上证明的最小规则；不应把未验证的外部声明用作剪枝依据。
 
+`codec.explain_diagnosis`、`explain_recheck`、`explain_regression` 接受该包生成的相应 JSON 报告，返回中文摘要。摘要保留部分状态、未知成立状态与原基线完成声明；详细证据仍在 JSON 报告中。CLI 用 `--format text` 调用这些入口。
+
 ## 异常与部分结果
 
 `model.InputError::Invalid` 表示非法模式、NULL 策略或参数。根发现入口将 `budget.Exhausted` 转成 `Partial(reason)` 并返回已证明结果；其他执行错误向调用者传播。`CompleteInDomain` 需要结合 `limits` 解释。低层 `/dependency`、`/unique` 的输出数组必须初始为空；预算异常向外传播时，数组中只保留已经证明的结果。

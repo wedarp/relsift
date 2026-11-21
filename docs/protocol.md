@@ -13,9 +13,17 @@ moon run cmd/relsift --target native -- discover-stepped INPUT.json --step-candi
 
 `--target wasm` 也可在 Moonrun 宿主中运行 CLI。JavaScript 和 wasm-gc 用于核心库与无 IO 示例，CLI 未声明支持这两个后端。原生二进制编译后可直接执行，无需 MoonBit 编译器或 Node.js。
 
-输入由小写扩展名 `.csv`、`.json` 选择。CLI 不写回输入，不自动修复，也不自行创建输出文件；结果写到标准输出，调用者可自行重定向。`--table-id` 只作用于 CSV。默认格式为 JSON，可选 `--format text`。验证器文本格式会先给简短结论，再保留 JSON 反例摘要。
+输入由小写扩展名 `.csv`、`.json` 选择。CLI 不写回输入，不自动修复，也不自行创建输出文件；结果写到标准输出，调用者可自行重定向。`--table-id` 仅接受 CSV 输入；JSON 已有显式 ID，覆盖选项会被拒绝。默认格式为 JSON，可选 `--format text`。验证、诊断、报告复核和快照回归的文本格式会先给简短中文结论，再保留一行完整 JSON；发现和 IND 文本模式输出关系解释。
 
-发现预算可用 `--max-lhs`、`--max-ucc-width`、`--max-candidates`、`--max-work`、`--max-results` 显式设置。每个选项必须提供一个值，未知选项拒绝。
+发现预算可用 `--max-lhs`、`--max-ucc-width`、`--max-candidates`、`--max-work`、`--max-results` 显式设置。每个选项必须提供一个值，未知或重复选项拒绝；不采用后值覆盖。命令与全部参数先验证，再读取文件。
+
+| 命令 | 接受的预算选项 |
+| --- | --- |
+| `discover`、`discover-stepped` | 所有五个发现预算选项 |
+| `ind`、`diagnose`、`compare` | 候选、工作、结果数量；不接受发现宽度选项 |
+| `verify`、`verify-report` | 不接受预算选项；独立参考验证不受生产预算控制 |
+
+需要预算内判定单个约束时使用 `diagnose`。`--step-candidates` 仅适用于 `discover-stepped`。这些限制避免参数被接受却未作用于实际执行。
 
 JSON 中的 Int32 计数、宽度和 `orphan_limit` 必须是范围内的非负整数值，小数不会截断后继续执行；例如 1.0 表示整数 1，而 1.5 非法。Int64 字段必须是无前导零、无正号的非负十进制字符串。
 

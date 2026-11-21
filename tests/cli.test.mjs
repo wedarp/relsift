@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -27,6 +27,13 @@ function run(args, expected = 0) {
   assert.ifError(result.error);
   assert.equal(result.status, expected, result.stdout + result.stderr);
   return { raw: result.stdout.trim(), json: JSON.parse(result.stdout) };
+}
+function runText(args, expected = 0) {
+  const result = spawnSync(executable, [...args, '--format', 'text'], { encoding: 'utf8' });
+  assert.ifError(result.error);
+  assert.equal(result.status, expected, result.stdout + result.stderr);
+  const lines = result.stdout.trim().split(/\r?\n/);
+  return { explanation: lines.slice(0, -1).join('\n'), json: JSON.parse(lines.at(-1)) };
 }
 const orderArgs = ['discover', 'examples/orders.csv', '--table-id', 'orders'];
 const rows = [ ['O1', '1', 'P1', 'Pen'], ['O1', '2', 'P2', 'Book'], ['O2', '1', 'P2', 'Book'], ['O2', '2', 'P1', 'Pen'] ];
@@ -179,4 +186,59 @@ test('fractional integer fields fail instead of being silently truncated', () =>
   for (const command of ['verify', 'diagnose']) {
     assert.equal(run([command, 'examples/exports.json', rule], 2).json.status.kind, 'failed');
   }
+});
+
+test('CLI rejects duplicate and inapplicable options before touching input files', () => {
+  const missing = join(temporary, 'nonexistent.csv');
+  const duplicate = run(['discover', missing, '--max-work', '10', '--max-work', '20'], 2).json;
+  assert.match(duplicate.error, /duplicate option/);
+  for (const command of ['verify', 'verify-report']) {
+    const rejected = run([command, missing, 'not-read.json', '--max-work', '0'], 2).json;
+    assert.match(rejected.error, /unbudgeted independent validator/);
+  }
+  for (const command of ['ind', 'diagnose', 'compare']) {
+    const args = [command, missing];
+    if (command !== 'ind') args.push('not-read.json');
+    assert.match(run([...args, '--max-lhs', '0'], 2).json.error, /width limits only apply to discovery/);
+  }
+  assert.match(run(['discover', 'not-read.json', '--table-id', 'ignored'], 2).json.error, /override requires CSV/);
+  assert.match(run(['typo', missing], 2).json.error, /unknown command/);
+  assert.match(run(['discover', missing, '--step-candidates', '1'], 2).json.error, /requires discover-stepped/);
+});
+
+test('text summaries distinguish completed, disproved and unknown diagnoses', () => {
+  const args = ['diagnose', 'examples/orders.csv', 'examples/verify-fd.json', '--table-id', 'orders'];
+  const full = runText(args, 1);
+  assert.match(full.explanation, /已找到反例/);
+  assert.match(full.explanation, /计数完整/);
+  assert.equal(full.json.counts_complete, true);
+  const unknown = runText([...args, '--max-work', '0'], 3);
+  assert.match(unknown.explanation, /尚未判定/);
+  assert.match(unknown.explanation, /计数仅为下界/);
+  assert.equal(unknown.json.holds, null);
+  const found = runText([...args, '--max-results', '0'], 3);
+  assert.match(found.explanation, /已找到反例/);
+  assert.match(found.explanation, /计数仅为下界/);
+  assert.equal(found.json.holds, false);
+  assert.match(runText(['diagnose', 'examples/orders.csv', 'examples/verify-unique.json', '--table-id', 'orders']).explanation, /约束成立/);
+  assert.match(runText(['diagnose', 'examples/exports.json', 'examples/verify-ind.json'], 1).explanation, /目标唯一：是/);
+  const repeated = JSON.parse(readFileSync('examples/exports.json', 'utf8'));
+  repeated.tables[0].rows.push({ id: 'o3', cells: ['O3', 'P1'] });
+  const targetRepeated = fixture('text-target-repeated.json', JSON.stringify(repeated));
+  assert.match(runText(['diagnose', targetRepeated, 'examples/verify-ind.json'], 1).explanation, /目标唯一：否/);
+});
+
+test('text rechecks and snapshot replay preserve baseline completion claims', () => {
+  const baseline = fixture('text-baseline.json', JSON.stringify(run(orderArgs).json));
+  const verified = runText(['verify-report', 'examples/orders.csv', baseline, '--table-id', 'orders']);
+  assert.match(verified.explanation, /未验证搜索完整性/);
+  assert.equal(verified.json.valid, true);
+  const changed = runText(['compare', 'examples/orders-duplicate.csv', baseline, '--table-id', 'orders'], 1);
+  assert.match(changed.explanation, /反例 5/);
+  assert.match(changed.explanation, /未搜索新增关系/);
+  const partial = fixture('text-partial.json', JSON.stringify(run([...orderArgs, '--max-work', '0'], 3).json));
+  const replay = runText(['compare', 'examples/orders.csv', partial, '--table-id', 'orders']);
+  assert.match(replay.explanation, /快照回归：声明域内完成/);
+  assert.match(replay.explanation, /基线状态：部分结果/);
+  assert.equal(replay.json.new_rules_searched, false);
 });

@@ -12,64 +12,14 @@ async fn read_input(path : String) -> String {
 
 ///|
 async fn execute(args : Array[String]) -> Int32 {
-  if args.length() < 3 {
-    raise @model.Invalid(
-      "usage: relsift discover|discover-stepped|ind|verify|diagnose|verify-report|compare INPUT [RULE_OR_REPORT.json] [--format json|text] [--table-id ID] [--step-candidates N] [--max-lhs N] [--max-ucc-width N] [--max-candidates N] [--max-work N] [--max-results N]",
-    )
-  }
-  let command = args[1]
-  let path = args[2]
-  let mut rule_path : String? = None
-  let mut offset = 3
-  if command == "verify" ||
-    command == "diagnose" ||
-    command == "verify-report" ||
-    command == "compare" {
-    if args.length() <= 3 {
-      raise @model.Invalid(command + " requires RULE_OR_REPORT.json")
-    }
-    rule_path = Some(args[3])
-    offset = 4
-  }
-  let mut format = "json"
-  let mut table_id = "table"
-  let mut limits = @budget.defaults()
-  let mut step_candidates = 100
-  while offset < args.length() {
-    if offset + 1 >= args.length() {
-      raise @model.Invalid("option requires a value")
-    }
-    let key = args[offset]
-    let value = args[offset + 1]
-    match key {
-      "--format" => format = value
-      "--table-id" => table_id = value
-      "--step-candidates" => {
-        if command != "discover-stepped" {
-          raise @model.Invalid("step quota requires discover-stepped")
-        }
-        step_candidates = @string.parse_int(value)
-        if step_candidates <= 0 {
-          raise @model.Invalid("CLI step quota must be positive")
-        }
-      }
-      "--max-lhs" => limits = { ..limits, max_lhs: @string.parse_int(value), }
-      "--max-ucc-width" =>
-        limits = { ..limits, max_ucc_width: @string.parse_int(value), }
-      "--max-candidates" =>
-        limits = { ..limits, max_candidates: @string.parse_int(value), }
-      "--max-work" =>
-        limits = { ..limits, max_work: @string.parse_int64(value), }
-      "--max-results" =>
-        limits = { ..limits, max_results: @string.parse_int(value), }
-      _ => raise @model.Invalid("unknown option: " + key)
-    }
-    offset += 2
-  }
-  ignore(@budget.meter(limits))
-  if format != "json" && format != "text" {
-    raise @model.Invalid("format must be json or text")
-  }
+  let options = parse_options(args)
+  let command = options.command
+  let path = options.path
+  let rule_path = options.rule_path
+  let format = options.format
+  let table_id = options.table_id
+  let limits = options.limits
+  let step_candidates = options.step_candidates
   let input = read_input(path)
   let tables = if path.has_suffix(".csv") {
     [@codec.parse_csv(input, table_id)]
@@ -85,6 +35,9 @@ async fn execute(args : Array[String]) -> Int32 {
         @codec.parse_discovery_report(read_input(rule_path.unwrap())),
         limits~,
       )
+      if format == "text" {
+        println(@codec.explain_regression(report))
+      }
       println(@codec.canonical(report))
       let fields = @codec.object(report)
       if @codec.string(
@@ -103,6 +56,9 @@ async fn execute(args : Array[String]) -> Int32 {
         tables,
         @codec.parse_discovery_report(read_input(rule_path.unwrap())),
       )
+      if format == "text" {
+        println(@codec.explain_recheck(report))
+      }
       println(@codec.canonical(report))
       if @codec.field(@codec.object(report), "valid") == Json::boolean(true) {
         0
@@ -197,6 +153,9 @@ async fn execute(args : Array[String]) -> Int32 {
         read_input(rule_path.unwrap()),
         limits~,
       )
+      if format == "text" {
+        println(@codec.explain_diagnosis(report))
+      }
       println(@codec.canonical(report))
       let fields = @codec.object(report)
       let kind = @codec.string(

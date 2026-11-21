@@ -24,6 +24,12 @@ pub fn discovery(@relsift.Discovery) -> @json.Json
 
 pub fn explain(@relsift.Discovery) -> String
 
+pub fn explain_diagnosis(@json.Json) -> String raise
+
+pub fn explain_recheck(@json.Json) -> String raise
+
+pub fn explain_regression(@json.Json) -> String raise
+
 pub fn fd_diagnosis(@verify.FdDiagnosis) -> @json.Json
 
 pub fn field(Map[String, @json.Json], String) -> @json.Json raise @model.InputError
