@@ -57,6 +57,8 @@ FD 仍为 8 条，所有唯一组合失效。引擎保留实际行重数，不�
 
 保存的发现 JSON 可用 `verify-report INPUT REPORT.json` 独立复核规则与每条删列证据；这不证明报告没有遗漏关系。见[报告证据复核](docs/certificates.md)。
 
+接到下一份导出时，`compare INPUT BASELINE.json` 会重新检查旧规则，返回新的反例或更小成立集合，保留原报告的完成状态。见[快照回归](docs/regression.md)。
+
 ## 实验三：跨表关联候选
 
 [examples/exports.json](examples/exports.json) 含订单和产品两个有显式 ID 的表。

@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift/regression"
+
+import {
+  "wedarp/relsift",
+  "wedarp/relsift/budget",
+  "wedarp/relsift/model",
+  "wedarp/relsift/verify",
+}
+
+// Values
+pub fn compare(@model.Table, @relsift.Discovery, limits? : @budget.Limits) -> Report raise
+
+// Errors
+
+// Types and methods
+pub(all) struct Check {
+  rule : Rule
+  outcome : Outcome
+}
+
+pub(all) enum Outcome {
+  HeldMinimal
+  HeldNonminimal(Array[String])
+  Violated(@verify.Pair)
+  MissingColumns(Array[String])
+}
+
+pub(all) struct Report {
+  table_id : String
+  baseline_status : @budget.Status
+  baseline_fd_complete : Bool
+  baseline_ucc_complete : Bool
+  status : @budget.Status
+  limits : @budget.Limits
+  usage : @budget.Usage
+  baseline_rules : Int64
+  checked_rules : Int32
+  checks : Array[Check]
+}
+
+pub(all) enum Rule {
+  Functional(Array[String], String)
+  Unique(Array[String])
+}
+
+// Type aliases
+
+// Traits

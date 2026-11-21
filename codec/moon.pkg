@@ -6,6 +6,7 @@ import {
   "wedarp/relsift/verify",
   "wedarp/relsift/dependency",
   "wedarp/relsift/unique",
+  "wedarp/relsift/regression",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
 }

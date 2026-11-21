@@ -21,7 +21,10 @@ async fn execute(args : Array[String]) -> Int32 {
   let path = args[2]
   let mut rule_path : String? = None
   let mut offset = 3
-  if command == "verify" || command == "diagnose" || command == "verify-report" {
+  if command == "verify" ||
+    command == "diagnose" ||
+    command == "verify-report" ||
+    command == "compare" {
     if args.length() <= 3 {
       raise @model.Invalid("verify requires RULE.json")
     }
@@ -66,6 +69,25 @@ async fn execute(args : Array[String]) -> Int32 {
     raise @model.Invalid("input extension must be .csv or .json")
   }
   match command {
+    "compare" => {
+      let report = @codec.compare_report(
+        tables,
+        @codec.parse_discovery_report(read_input(rule_path.unwrap())),
+        limits~,
+      )
+      println(@codec.canonical(report))
+      let fields = @codec.object(report)
+      if @codec.string(
+          @codec.field(@codec.object(@codec.field(fields, "status")), "kind"),
+        ) ==
+        "partial" {
+        3
+      } else if @codec.field(fields, "has_violations") == Json::boolean(true) {
+        1
+      } else {
+        0
+      }
+    }
     "verify-report" => {
       let report = @codec.recheck_report(
         tables,

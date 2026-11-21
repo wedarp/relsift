@@ -141,3 +141,17 @@ test('serialized report certificates can be replayed and tampering is rejected',
   const partialFile = fixture('partial-certificate.json', JSON.stringify(partial));
   assert.equal(run(['verify-report', 'examples/orders.csv', partialFile, '--table-id', 'orders']).json.reported_status.kind, 'partial');
 });
+
+test('snapshot replay separates violations, lost minimality and unfinished checks', () => {
+  const baseline = fixture('baseline.json', JSON.stringify(run(orderArgs).json));
+  const args = ['compare', 'examples/orders-duplicate.csv', baseline, '--table-id', 'orders'];
+  const changed = run(args, 1).json;
+  const checks = changed.tables[0].checks;
+  assert.equal(checks.filter(c => c.outcome.kind === 'violated').length, 5);
+  assert.equal(checks.filter(c => c.outcome.kind === 'held_minimal').length, 8);
+  assert.equal(changed.new_rules_searched, false);
+  const oneRow = fixture('one-row.csv', 'order_id,line_no,product_id,product_name\nO1,1,P1,Pen\n');
+  const smaller = run(['compare', oneRow, baseline, '--table-id', 'orders']).json;
+  assert.ok(smaller.tables[0].checks.every(c => c.outcome.kind === 'held_nonminimal'));
+  assert.equal(run([...args, '--max-candidates', '0'], 3).json.status.kind, 'partial');
+});
