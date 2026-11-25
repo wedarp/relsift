@@ -126,3 +126,74 @@ test "fresh pair scans agree with independent validators on binary snapshots" {
     }
   }
 }
+
+///|
+test "tuple scan returns the same pair as the independent nested loop" {
+  let values = [None, Some(""), Some("|"), Some("a|b"), Some("é"), Some("é")]
+  let mut seed = 20261125U
+  fn next(bound : UInt32) -> Int32 {
+    seed = seed * 1664525U + 1013904223U
+    ((seed >> 8) % bound).reinterpret_as_int()
+  }
+  for _ in 0..<240 {
+    let columns : Array[@model.Column] = ["a", "b", "c"].map(id => {
+      id,
+      name: id,
+    })
+    let rows : Array[@model.Row] = Array::makei(next(9U), i => {
+      id: "r\{i}",
+      cells: Array::makei(3, _ => values[next(6U)]),
+    })
+    let t = @model.table("t", columns, rows, policy=@model.NullAsValue)
+    let sorted = t.rows()
+    let meter = @budget.meter(@budget.defaults())
+    for mask in 0..<8 {
+      let positions = []
+      for i in 0..<3 {
+        if (mask & (1 << i)) != 0 {
+          positions.push(i)
+        }
+      }
+      let ids = positions.map(i => columns[i].id)
+      assert_eq(
+        counterexample(sorted, positions, None, meter),
+        @verify.unique(t, ids).counterexample,
+      )
+      for rhs in 0..<3 {
+        if !positions.contains(rhs) {
+          assert_eq(
+            counterexample(sorted, positions, Some(rhs), meter),
+            @verify.fd(t, ids, columns[rhs].id).counterexample,
+          )
+        }
+      }
+    }
+  }
+}
+
+///|
+test "a later collision can have the earliest first row" {
+  let t = sample([
+    [Some("x"), Some("1")],
+    [Some("y"), Some("1")],
+    [Some("y"), Some("2")],
+    [Some("x"), Some("2")],
+  ])
+  let meter = @budget.meter(@budget.defaults())
+  let expected = @verify.Pair::{ first: "r0", second: "r3", }
+  assert_eq(counterexample(t.rows(), [0], Some(1), meter), Some(expected))
+  assert_eq(counterexample(t.rows(), [0], None, meter), Some(expected))
+}
+
+///|
+test "a large unchanged key fits the work budget using a tuple scan" {
+  let before = sample([[Some("old")], [Some("other")]], ids=["a"])
+  let t = sample(Array::makei(4000, i => [Some("id\{i}")]), ids=["a"])
+  let report = compare(t, @engine.discover(before), limits={
+    ..@budget.defaults(),
+    max_work: 25000L,
+  })
+  assert_true(report.status is @budget.CompleteInDomain)
+  assert_eq(report.checked_rules, 1)
+  assert_true(report.checks[0].outcome is HeldMinimal)
+}

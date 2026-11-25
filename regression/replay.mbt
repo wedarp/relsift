@@ -33,40 +33,44 @@ pub(all) struct Report {
 }
 
 ///|
-/// Direct raw-cell scan; deliberately independent of the partition index.
+/// Compare raw tuples without using the discovery partition index.
 fn counterexample(
   rows : Array[@model.Row],
   positions : Array[Int32],
   rhs : Int32?,
   meter : @budget.Meter,
 ) -> @verify.Pair? raise @budget.Exhausted {
-  for i in 0..<rows.length() {
-    for j in (i + 1)..<rows.length() {
-      meter.charge(1L)
-      let mut same = true
-      for p in positions {
+  let first_rows : Map[Array[String?], Int32] = Map([])
+  let mut best : (Int32, Int32)? = None
+  for j, row in rows {
+    meter.charge(positions.length().to_int64() + 1L)
+    let key = positions.map(p => row.cells[p])
+    match first_rows.get(key) {
+      None => first_rows[key] = j
+      Some(i) => {
+        // The first differing row in a group always differs from its first row.
+        let improves = match best {
+          Some((previous, _)) => i < previous
+          None => true
+        }
+        if !improves {
+          continue
+        }
         meter.charge(1L)
-        if rows[i].cells[p] != rows[j].cells[p] {
-          same = false
-          break
+        if rhs is Some(p) && rows[i].cells[p] == row.cells[p] {
+          continue
         }
-      }
-      if !same {
-        continue
-      }
-      let failure = match rhs {
-        None => true
-        Some(p) => {
-          meter.charge(1L)
-          rows[i].cells[p] != rows[j].cells[p]
+        if i == 0 {
+          return Some({ first: rows[i].id, second: row.id, })
         }
-      }
-      if failure {
-        return Some({ first: rows[i].id, second: rows[j].id, })
+        best = Some((i, j))
       }
     }
   }
-  None
+  best.map(fn(pair) {
+    let (i, j) = pair
+    { first: rows[i].id, second: rows[j].id, }
+  })
 }
 
 ///|
@@ -88,7 +92,7 @@ fn check_shape(
 
 ///|
 fn replay_rule(
-  table : @model.Table,
+  available : Map[String, Int32],
   rows : Array[@model.Row],
   columns : Array[String],
   rhs : String?,
@@ -96,7 +100,6 @@ fn replay_rule(
 ) -> Outcome raise {
   meter.charge(columns.length().to_int64() + 1L)
   check_shape(columns, rhs)
-  let available = table.columns().map(c => c.id)
   let missing = columns.filter(c => !available.contains(c))
   if rhs is Some(a) && !available.contains(a) {
     missing.push(a)
@@ -104,21 +107,22 @@ fn replay_rule(
   if !missing.is_empty() {
     return MissingColumns(missing)
   }
-  let positions = table.positions(columns)
+  let positions = columns.map(c => available[c])
   let rhs_position = match rhs {
-    Some(a) => Some(table.position(a))
+    Some(a) => Some(available[a])
     None => None
   }
   match counterexample(rows, positions, rhs_position, meter) {
     Some(pair) => return Violated(pair)
     None => ()
   }
-  for removed in columns {
-    meter.charge(1L)
-    let parent = columns.filter(c => c != removed)
-    if counterexample(rows, table.positions(parent), rhs_position, meter)
-      is None {
-      return HeldNonminimal(parent)
+  for removed in 0..<columns.length() {
+    meter.charge(columns.length().to_int64() + 1L)
+    let parent = Array::makei(positions.length() - 1, i => {
+      positions[if i < removed { i } else { i + 1 }]
+    })
+    if counterexample(rows, parent, rhs_position, meter) is None {
+      return HeldNonminimal(columns.filter(c => c != columns[removed]))
     }
   }
   HeldMinimal
@@ -142,18 +146,23 @@ pub fn compare(
   let checks = []
   let status = try {
     meter.charge(
-      table.row_count().to_int64() * (table.column_count().to_int64() + 1L),
+      (table.row_count().to_int64() + 1L) *
+      (table.column_count().to_int64() + 1L),
     )
     let rows = table.rows()
+    let available : Map[String, Int32] = Map([])
+    for i, c in table.columns() {
+      available[c.id] = i
+    }
     for f in baseline.fds {
       meter.candidate()
-      let outcome = replay_rule(table, rows, f.lhs, Some(f.rhs), meter)
+      let outcome = replay_rule(available, rows, f.lhs, Some(f.rhs), meter)
       meter.result()
       checks.push({ rule: Functional(f.lhs.copy(), f.rhs), outcome, })
     }
     for k in baseline.uccs {
       meter.candidate()
-      let outcome = replay_rule(table, rows, k.columns, None, meter)
+      let outcome = replay_rule(available, rows, k.columns, None, meter)
       meter.result()
       checks.push({ rule: Unique(k.columns.copy()), outcome, })
     }
