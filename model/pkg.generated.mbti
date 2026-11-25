@@ -68,6 +68,7 @@ pub fn Table::columns(Self) -> Array[Column]
 pub fn Table::ordered_positions(Self, Array[String]) -> Array[Int32] raise InputError
 pub fn Table::position(Self, String) -> Int32 raise InputError
 pub fn Table::positions(Self, Array[String]) -> Array[Int32] raise InputError
+pub fn Table::row(Self, String) -> Row?
 pub fn Table::row_count(Self) -> Int32
 pub fn Table::rows(Self) -> Array[Row]
 #deprecated

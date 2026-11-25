@@ -96,15 +96,45 @@ pub fn Table::row_count(self : Table) -> Int32 {
 }
 
 ///|
+/// Return the requested stable row as an independent copy.
+pub fn Table::row(self : Table, id : String) -> Row? {
+  let mut low = 0
+  let mut high = self.rows_data.length()
+  while low < high {
+    let mid = low + (high - low) / 2
+    let row = self.rows_data[mid]
+    let order = row.id.lexical_compare(id)
+    if order == 0 {
+      return Some({ id: row.id, cells: row.cells.copy(), })
+    }
+    if order < 0 {
+      low = mid + 1
+    } else {
+      high = mid
+    }
+  }
+  None
+}
+
+///|
 pub fn Table::column_count(self : Table) -> Int32 {
   self.columns_data.length()
 }
 
 ///|
 pub fn Table::position(self : Table, id : String) -> Int32 raise InputError {
-  for i, c in self.columns_data {
-    if c.id == id {
-      return i
+  let mut low = 0
+  let mut high = self.columns_data.length()
+  while low < high {
+    let mid = low + (high - low) / 2
+    let order = self.columns_data[mid].id.lexical_compare(id)
+    if order == 0 {
+      return mid
+    }
+    if order < 0 {
+      low = mid + 1
+    } else {
+      high = mid
     }
   }
   raise Invalid("unknown column ID: " + id)

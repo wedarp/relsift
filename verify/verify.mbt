@@ -131,20 +131,11 @@ pub fn check_pair(
     Some(id) => Some(t.position(id))
     None => None
   }
-  let rows = t.rows()
-  let mut first : @model.Row? = None
-  let mut second : @model.Row? = None
-  for row in rows {
-    if row.id == pair.first {
-      first = Some(row)
-    }
-    if row.id == pair.second {
-      second = Some(row)
-    }
+  if pair.first == pair.second {
+    return false
   }
-  match (first, second) {
+  match (t.row(pair.first), t.row(pair.second)) {
     (Some(l), Some(r)) =>
-      l.id != r.id &&
       x.all(c => l.cells[c] == r.cells[c]) &&
       (match a {
         Some(c) => l.cells[c] != r.cells[c]
