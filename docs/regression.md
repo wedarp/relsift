@@ -25,3 +25,5 @@ moon run cmd/relsift --target native -- compare examples/orders-duplicate.csv ba
 `baseline_status` 和原先两个完成标志独立保留。新检查完成只表示所列基线规则已检查完毕，不扩大旧搜索域，也不消除旧报告的截断。`new_rules_searched` 恒为 false；本操作不发现新规则或 IND 回归。新增表列在 `untracked_tables` 中。仍成立但不再最小的规则不会导致退出 1，缺列和反例会导致退出 1。
 
 基线是声明集合，不是经过认证的历史。`baseline_authenticated` 恒为 false。需要确认其在旧快照上有效时，应先使用 `verify-report` 和原始输入复核；仍然需要人工确认业务意义。
+
+运行前检查声明中的空列 ID、重复列、平凡 FD、超出基线发现域的宽度和重复规则。改变列的书写顺序仍表示同一规则。非法基线返回退出码 2，即使本次工作预算为零。该预检属于输入验证。

@@ -91,6 +91,44 @@ fn check_shape(
 }
 
 ///|
+/// Validate declarations before spending the budget on the new snapshot.
+fn validate_rules(baseline : @engine.Discovery) -> Unit raise @model.InputError {
+  let fds : Map[(Array[String], String), Bool] = Map([])
+  for i, f in baseline.fds {
+    check_shape(f.lhs, Some(f.rhs))
+    if f.lhs.length() > baseline.limits.max_lhs ||
+      f.lhs.length() >= baseline.column_count {
+      raise @model.Invalid(
+        "baseline FD \{i}: width outside the discovery domain",
+      )
+    }
+    let lhs = f.lhs.copy()
+    lhs.sort()
+    let key = (lhs, f.rhs)
+    if fds.contains(key) {
+      raise @model.Invalid("baseline FD \{i}: duplicate dependency")
+    }
+    fds[key] = true
+  }
+  let uccs : Map[Array[String], Bool] = Map([])
+  for i, k in baseline.uccs {
+    check_shape(k.columns, None)
+    if k.columns.length() > baseline.limits.max_ucc_width ||
+      k.columns.length() > baseline.column_count {
+      raise @model.Invalid(
+        "baseline UCC \{i}: width outside the discovery domain",
+      )
+    }
+    let columns = k.columns.copy()
+    columns.sort()
+    if uccs.contains(columns) {
+      raise @model.Invalid("baseline UCC \{i}: duplicate unique combination")
+    }
+    uccs[columns] = true
+  }
+}
+
+///|
 fn replay_rule(
   available : Map[String, Int32],
   rows : Array[@model.Row],
@@ -99,7 +137,6 @@ fn replay_rule(
   meter : @budget.Meter,
 ) -> Outcome raise {
   meter.charge(columns.length().to_int64() + 1L)
-  check_shape(columns, rhs)
   let missing = columns.filter(c => !available.contains(c))
   if rhs is Some(a) && !available.contains(a) {
     missing.push(a)
@@ -143,6 +180,7 @@ pub fn compare(
     raise @model.Invalid("cannot compare different NULL policies")
   }
   let meter = @budget.meter(limits)
+  validate_rules(baseline)
   let checks = []
   let status = try {
     meter.charge(

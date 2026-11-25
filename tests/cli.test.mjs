@@ -39,6 +39,28 @@ const orderArgs = ['discover', 'examples/orders.csv', '--table-id', 'orders'];
 const rows = [ ['O1', '1', 'P1', 'Pen'], ['O1', '2', 'P2', 'Book'], ['O2', '1', 'P2', 'Book'], ['O2', '2', 'P1', 'Pen'] ];
 const positions = { order_id: 0, line_no: 1, product_id: 2, product_name: 3 };
 
+test('snapshot comparison rejects duplicate declarations before work truncation', () => {
+  const initial = run(orderArgs).json;
+  const table = initial.tables[0];
+  const rule = table.fds.find(fd => fd.lhs.length === 2);
+  table.fds.push({ ...rule, lhs: [...rule.lhs].reverse() });
+  table.usage.results += 1;
+  const baseline = fixture('duplicate-baseline.json', JSON.stringify(initial));
+  const report = run(['compare', 'examples/orders.csv', baseline, '--table-id', 'orders', '--max-work', '0'], 2).json;
+  assert.match(report.error, /duplicate dependency/);
+});
+
+test('saved reports accept a UTF-8 BOM and reject oversized input before parsing', () => {
+  const report = run(orderArgs).raw;
+  const bom = fixture('bom-report.json', '\uFEFF' + report);
+  const valid = run(['verify-report', 'examples/orders.csv', bom, '--table-id', 'orders']).json;
+  assert.equal(valid.valid, true);
+  assert.equal(valid.checked_fds, 8);
+  const oversized = fixture('oversized.csv', Buffer.alloc(8 * 1024 * 1024 + 1, 0x61));
+  const invalid = run(['discover', oversized, '--max-work', '0'], 2).json;
+  assert.match(invalid.error, /file exceeds 8 MiB/);
+});
+
 test('ordered tuple diagnosis reports joint orphans and preserves source multiplicity', () => {
   const args = ['diagnose', 'examples/tuple-exports.json', 'examples/diagnose-tuple-ind.json'];
   const result = runText(args, 1);

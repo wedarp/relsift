@@ -197,3 +197,33 @@ test "a large unchanged key fits the work budget using a tuple scan" {
   assert_eq(report.checked_rules, 1)
   assert_true(report.checks[0].outcome is HeldMinimal)
 }
+
+///|
+test "malformed baseline rules are rejected even with a zero replay budget" {
+  let t = sample([
+    [Some("x"), Some("1")],
+    [Some("x"), Some("2")],
+    [Some("y"), Some("1")],
+    [Some("y"), Some("2")],
+  ])
+  let d = @engine.discover(t)
+  let rule = d.uccs[0]
+  let malformed = [
+    { ..d, uccs: [rule, { ..rule, columns: ["b", "a"], }], },
+    { ..d, uccs: [{ ..rule, columns: ["a", "a"], }], },
+    { ..d, limits: { ..d.limits, max_ucc_width: 1, }, },
+    { ..d, fds: [{ lhs: ["a"], rhs: "a", deletions: [], }], },
+  ]
+  for baseline in malformed {
+    let rejected = try {
+      ignore(
+        compare(t, baseline, limits={ ..@budget.defaults(), max_work: 0L, }),
+      )
+      false
+    } catch {
+      @model.Invalid(_) => true
+      _ => false
+    }
+    assert_true(rejected)
+  }
+}
