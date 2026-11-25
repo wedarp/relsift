@@ -25,43 +25,18 @@ pub fn Theory::closure(
   let agenda = initial.copy()
   let steps : Array[Step] = []
   let status = try {
-    m.charge(
-      self.columns.length().to_int64() +
-      self.premises.length().to_int64() +
-      initial.length().to_int64() +
-      1L,
-    )
-    let known = Array::make(self.columns.length(), false)
-    let remaining = self.premises.map(rule => rule.lhs.length())
-    for p in initial {
-      known[p] = true
-    }
-    fn fire(i : Int32) -> Unit raise @budget.Exhausted {
+    self.propagate(agenda, m, on_rule=fn(
+      i,
+      rhs,
+      fresh,
+    ) -> Unit raise @budget.Exhausted {
       m.candidate()
-      let rhs = self.premises[i].rhs
-      if !known[rhs] {
+      if fresh {
         m.result()
-        known[rhs] = true
-        agenda.push(rhs)
         steps.push({ rule_index: i, derived: self.columns[rhs], })
       }
-    }
-    for i in self.constants {
-      fire(i)
-    }
-    let mut cursor = 0
-    while cursor < agenda.length() {
-      m.charge(1L)
-      let column = agenda[cursor]
-      cursor += 1
-      for i in self.consumers[column] {
-        m.charge(1L)
-        remaining[i] -= 1
-        if remaining[i] == 0 {
-          fire(i)
-        }
-      }
-    }
+    })
+    |> ignore
     @budget.CompleteInDomain
   } catch {
     @budget.Exhausted(reason) => @budget.Partial(reason)

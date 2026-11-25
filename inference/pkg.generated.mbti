@@ -20,6 +20,31 @@ pub(all) struct Closure {
   usage : @budget.Usage
 }
 
+pub(all) struct Cover {
+  rules : Array[Rule]
+  edits : Array[CoverEdit]
+  status : @budget.Status
+  usage : @budget.Usage
+}
+
+pub(all) struct CoverAudit {
+  comparison : TheoryComparison
+  minimality : MinimalityCheck
+  status : @budget.Status
+  usage : @budget.Usage
+}
+
+pub(all) enum CoverEdit {
+  RemovedColumn(Rule, String)
+  RemovedRule(Rule)
+}
+
+pub(all) enum DirectionalCheck {
+  EntailsAll
+  Separated(Separation)
+  Unchecked
+}
+
 pub(all) struct Implication {
   lhs : Array[String]
   rhs : String
@@ -28,15 +53,51 @@ pub(all) struct Implication {
   usage : @budget.Usage
 }
 
+pub(all) struct KeyDeletion {
+  removed : String
+  missing : String
+  agreement : Array[String]
+}
+
+pub(all) enum MinimalityCheck {
+  Irreducible
+  Reducible(Reduction)
+  MinimalityUnchecked
+}
+
 pub(all) enum Outcome {
   Entailed(Array[Step])
   Refuted(Array[String])
   Undetermined
 }
 
+pub(all) struct Reduction {
+  rule_index : Int32
+  removed_column : String?
+  proof : Array[Step]
+}
+
 pub(all) struct Rule {
   lhs : Array[String]
   rhs : String
+}
+
+pub(all) struct SchemaKey {
+  columns : Array[String]
+  proof : Array[Step]
+  deletions : Array[KeyDeletion]
+}
+
+pub(all) struct SchemaKeys {
+  keys : Array[SchemaKey]
+  max_width : Int32
+  status : @budget.Status
+  usage : @budget.Usage
+}
+
+pub(all) struct Separation {
+  rule : Rule
+  agreement : Array[String]
 }
 
 pub(all) struct Step {
@@ -47,13 +108,28 @@ pub(all) struct Step {
 pub struct Theory {
   // private fields
 }
+pub fn Theory::audit_cover(Self, Self, limits? : @budget.Limits) -> CoverAudit raise @model.InputError
 pub fn Theory::closure(Self, Array[String], limits? : @budget.Limits) -> Closure raise
+pub fn Theory::columns(Self) -> Array[String]
+pub fn Theory::compare(Self, Self, limits? : @budget.Limits) -> TheoryComparison raise @model.InputError
 pub fn Theory::explain(Self, Closure, String) -> Array[Step]? raise @model.InputError
 pub fn Theory::implies(Self, Array[String], String, limits? : @budget.Limits) -> Implication raise
+pub fn Theory::minimal_cover(Self, limits? : @budget.Limits) -> Cover raise @model.InputError
 pub fn Theory::rules(Self) -> Array[Rule]
+pub fn Theory::schema_keys(Self, limits? : @budget.Limits) -> SchemaKeys raise
 pub fn Theory::verify_counterexample(Self, Array[String], String, Array[String]) -> Bool
 pub fn Theory::verify_entailment(Self, Array[String], String, Array[Step]) -> Bool
+pub fn Theory::verify_reduction(Self, Reduction) -> Bool
+pub fn Theory::verify_schema_key(Self, SchemaKey) -> Bool
+pub fn Theory::verify_separation(Self, Self, Separation) -> Bool
 pub fn Theory::verify_trace(Self, Closure) -> Bool
+
+pub(all) struct TheoryComparison {
+  left_to_right : DirectionalCheck
+  right_to_left : DirectionalCheck
+  status : @budget.Status
+  usage : @budget.Usage
+}
 
 // Type aliases
 

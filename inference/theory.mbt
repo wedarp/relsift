@@ -59,10 +59,8 @@ pub fn theory(
     positions[id] = i
   }
   let premises : Array[CompiledRule] = []
-  let consumers = Array::makei(ordered.length(), _ => [])
-  let constants = []
   let seen : Map[(Array[Int32], Int32), Bool] = Map([])
-  for i, rule in rules {
+  for rule in rules {
     let lhs = positions_of(positions, rule.lhs)
     let rhs = match positions.get(rule.rhs) {
       Some(pos) => pos
@@ -77,21 +75,41 @@ pub fn theory(
     }
     seen[key] = true
     premises.push({ lhs, rhs, })
-    if lhs.is_empty() {
+  }
+  index_premises(ordered, positions, premises)
+}
+
+///|
+fn index_premises(
+  columns : Array[String],
+  positions : Map[String, Int32],
+  premises : Array[CompiledRule],
+) -> Theory {
+  let consumers = Array::makei(columns.length(), _ => [])
+  let constants = []
+  for i, rule in premises {
+    if rule.lhs.is_empty() {
       constants.push(i)
     }
-    for p in lhs {
+    for p in rule.lhs {
       consumers[p].push(i)
     }
   }
-  { columns: ordered, positions, premises, consumers, constants, }
+  { columns, positions, premises, consumers, constants, }
+}
+
+///|
+pub fn Theory::columns(self : Theory) -> Array[String] {
+  self.columns.copy()
+}
+
+///|
+fn Theory::describe(self : Theory, rule : CompiledRule) -> Rule {
+  { lhs: rule.lhs.map(p => self.columns[p]), rhs: self.columns[rule.rhs], }
 }
 
 ///|
 /// Return copies so callers cannot mutate the compiled theory.
 pub fn Theory::rules(self : Theory) -> Array[Rule] {
-  self.premises.map(rule => {
-    lhs: rule.lhs.map(p => self.columns[p]),
-    rhs: self.columns[rule.rhs],
-  })
+  self.premises.map(rule => self.describe(rule))
 }
