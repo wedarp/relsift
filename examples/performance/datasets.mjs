@@ -6,9 +6,9 @@ import { cpus, platform, release, tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-const [inputDir, baselinePath] = process.argv.slice(2);
-assert.ok(inputDir && process.argv.length <= 4,
-  'Usage: node examples/performance/datasets.mjs DATA_DIRECTORY [BASELINE_EXECUTABLE]');
+const [inputDir, baselinePath, mode] = process.argv.slice(2);
+assert.ok(inputDir && process.argv.length <= 5 && (mode === undefined || mode === '--compare-discovery'),
+  'Usage: node examples/performance/datasets.mjs DATA_DIRECTORY [BASELINE_EXECUTABLE [--compare-discovery]]');
 const current = ['relsift.exe', 'relsift']
   .map(file => resolve('_build/native/release/build/cmd/relsift', file))
   .find(existsSync);
@@ -94,6 +94,31 @@ function measure(executable, args) {
   return { report, samples_ms: samples, median_ms: samples[Math.floor(repetitions / 2)] };
 }
 
+function compareDiscovery(args) {
+  const runs = [resolve(baselinePath), current].map(executable => ({
+    executable, report: invoke(executable, args).report, samples: [],
+  }));
+  for (let i = 0; i < repetitions; i++) {
+    for (const index of [i % 2, (i + 1) % 2]) {
+      const run = runs[index];
+      const { report, elapsed } = invoke(run.executable, args);
+      assert.deepEqual(report, run.report);
+      run.samples.push(Number(elapsed.toFixed(3)));
+    }
+  }
+  const [earlier, latest] = runs;
+  for (const { report } of runs) assert.equal(report.status.kind, 'complete_in_domain');
+  const stableOutput = report => {
+    const { usage, ...table } = report.tables[0];
+    return { ...report, tables: [{ ...table, candidates: usage.candidates }] };
+  };
+  assert.deepEqual(stableOutput(latest.report), stableOutput(earlier.report));
+  return runs.map(({ report, samples }) => {
+    samples.sort((a, b) => a - b);
+    return summarize({ report, samples_ms: samples, median_ms: samples[Math.floor(repetitions / 2)] }, 'discover');
+  });
+}
+
 function summarize(measured, mode) {
   const { report, ...times } = measured;
   const table = report.tables[0];
@@ -115,9 +140,15 @@ try {
   }));
   for (const [file, delimiter, hash, headers] of workloads) {
     const { input, metadata } = loadInput(file, delimiter, hash, headers);
-    const discovery = measure(current, [
+    const discoverArgs = [
       'discover', input, '--max-lhs', searchWidth, '--max-ucc-width', searchWidth, '--max-work', workLimit,
-    ]);
+    ];
+    if (mode === '--compare-discovery') {
+      const [prior_discovery, discovery] = compareDiscovery(discoverArgs);
+      console.log(JSON.stringify({ file, ...metadata, discovery, prior_discovery }));
+      continue;
+    }
+    const discovery = measure(current, discoverArgs);
     assert.equal(discovery.report.status.kind, 'complete_in_domain');
     const baseline = join(temporary, basename(file, '.csv') + '-report.json');
     save(baseline, JSON.stringify(discovery.report));

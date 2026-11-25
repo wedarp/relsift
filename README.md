@@ -21,13 +21,14 @@ cd relsift
 moon run cmd/relsift --target native -- discover examples/orders.csv --table-id orders --format text
 ```
 
-在已有 MoonBit 项目中执行 `moon add wedarp/relsift@0.2.1` 即可使用库。导入和最小调用见 [API 文档](docs/api.md)，发布版见 [Mooncakes](https://mooncakes.io/docs/wedarp/relsift@0.2.1)。
+在已有 MoonBit 项目中执行 `moon add wedarp/relsift@0.3.0` 即可使用库。导入和最小调用见 [API 文档](docs/api.md)，发布版见 [Mooncakes](https://mooncakes.io/docs/wedarp/relsift@0.3.0)。
 
 | 使用场景 | 可运行入口 | 可核查的输出 |
 | --- | --- | --- |
 | 理解无文档明细 | `discover` 读取四行订单 CSV | 8 条 FD、5 个最小唯一组合和删列反例 |
 | 检查跨表关联 | `ind` 与 `diagnose` 读取 JSON 表 | 单列包含候选、目标唯一性与多列孤儿元组 |
 | 检查下一份导出 | `compare` 读取新快照与发现报告 | 仍成立、失去最小性、违反规则、缺少列 |
+| 检查规则能否推出新结论 | `moon run examples/inference` | 属性闭包、推导步骤与可复核的两行反模型 |
 
 相关命令详见下列实验和 [CLI 协议](docs/protocol.md)。版本变化见 [更新记录](CHANGELOG.md)。
 
@@ -118,6 +119,8 @@ for rule in result.fds {
 
 包导入配置与完整可运行代码见 [examples/library](examples/library/main.mbt)。
 
+使用 `wedarp/relsift/inference` 可以对选定的函数依赖前提计算闭包。`Theory::implies` 返回可独立复核的推导步骤或两行反模型，在预算不足时保留未确定状态。见 [推导示例和 API](docs/inference.md)。
+
 ## 算法与边界
 
 `partition` 用字符串字典编码、复合分区求交及缓存支持 `dependency` 和 `unique`。搜索按集合宽度递增；成立的 FD/UCC 对超集进行剪枝，每条返回结果都有完整删除证据。`inclusion` 构造跨表单列值集合并检验有向包含。`verify` 使用独立的直接行对或数组集合实现，不调用生产分区算法。
@@ -143,6 +146,6 @@ node --test tests/cli.test.mjs
 moon run examples/performance --target native --release
 ```
 
-测试包括 689 张二值表的分区差分、同一范围的完整发现穷举、固定种子的 300 张多值表、最小性证据重检、失败用例缩减，以及行列变形与预算中断。测试数量不能替代对任意输入的数学证明。
+测试包括 689 张二值表的分区差分、同一范围的完整发现穷举、固定种子的 300 张多值表、最小性证据重检、失败用例缩减，以及行列变形与预算中断。新增的推导差分逐一检查 100 组规则的 32 种种子集合和所有目标列。
 
 源码与项目示例使用 [MIT 许可证](LICENSE)，版权人为 wedarp。运行时、CI 工具和基准数据的来源与许可见 [第三方来源](THIRD_PARTY.md)。
