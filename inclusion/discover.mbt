@@ -36,18 +36,7 @@ pub fn discover(
   limits~ : @budget.Limits = @budget.defaults(),
 ) -> Report raise {
   let meter = @budget.meter(limits)
-  let ordered = tables.copy()
-  ordered.sort_by((a, b) => a.id.lexical_compare(b.id))
-  let seen : Map[String, Bool] = Map([])
-  for t in ordered {
-    if seen.contains(t.id) {
-      raise @model.Invalid("duplicate table ID")
-    }
-    seen[t.id] = true
-    if !ordered.is_empty() && t.policy != ordered[0].policy {
-      raise @model.Invalid("NULL policies differ")
-    }
-  }
+  let ordered = ordered_tables(tables)
   let relations = []
   let status = try {
     let domains : Array[Domain] = []
@@ -122,6 +111,23 @@ pub fn discover(
     usage: meter.usage(),
     relations,
   }
+}
+
+///|
+fn ordered_tables(
+  tables : Array[@model.Table],
+) -> Array[@model.Table] raise @model.InputError {
+  let ordered = tables.copy()
+  ordered.sort_by((a, b) => a.id.lexical_compare(b.id))
+  for i, t in ordered {
+    if i > 0 && t.id == ordered[i - 1].id {
+      raise @model.Invalid("duplicate table ID")
+    }
+    if t.policy != ordered[0].policy {
+      raise @model.Invalid("NULL policies differ")
+    }
+  }
+  ordered
 }
 
 ///|
