@@ -4,6 +4,7 @@
 moon run cmd/relsift --target native -- discover INPUT.csv --table-id export
 moon run cmd/relsift --target native -- discover INPUT.json
 moon run cmd/relsift --target native -- ind INPUT.json
+moon run cmd/relsift --target native -- tuple-ind INPUT.json --max-ind-width 3
 moon run cmd/relsift --target native -- verify INPUT.json RULE.json
 moon run cmd/relsift --target native -- diagnose INPUT.json RULE.json
 moon run cmd/relsift --target native -- verify-report INPUT.json REPORT.json
@@ -21,6 +22,7 @@ moon run cmd/relsift --target native -- discover-stepped INPUT.json --step-candi
 | --- | --- |
 | `discover`、`discover-stepped` | 所有五个发现预算选项 |
 | `ind`、`diagnose`、`compare` | 候选、工作、结果数量；不接受发现宽度选项 |
+| `tuple-ind` | 候选、工作、结果数量，另有 `--max-ind-width`、`--max-cached-projections` 和 `--target-unique-only true\|false` |
 | `verify`、`verify-report` | 不接受预算选项；独立参考验证不受生产预算控制 |
 
 需要预算内判定单个约束时使用 `diagnose`。`--step-candidates` 仅适用于 `discover-stepped`。这些限制避免参数被接受却未作用于实际执行。
@@ -62,6 +64,8 @@ UCC 使用 `columns`，删除证据结构相同。空左侧和空唯一组合正
 `work`、`max_work`、`partitions`、`cache_hits` 是 Int64，以十进制 JSON **字符串**输出，避免消费方丢失整数精度。其他计数为 Int32 数字。固定输入和参数产生确定性结果；不同版本的工作单位调整不保证计数不变。
 
 IND 每条记录含 `source_table`、`source_column`、`target_table`、`target_column`、`source_distinct`、`target_distinct`、`target_unique`。不默认输出失败列对。
+
+`tuple-ind` 读取 JSON 表，报告 `kind: "tuple_ind_discovery"`。它使用 `source_columns` 与 `target_columns` 数组保留对应关系，`options` 记录搜索宽度和过滤条件。额外计数包括 `cached_projections`、`projection_pruned` 和 `tuple_checks`。已经完成的投影构建总数 `projections_built` 使用十进制字符串。详见 [多列搜索结果](tuple-discovery.md)。
 
 ## 指定约束验证请求
 

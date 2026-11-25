@@ -21,12 +21,12 @@ cd relsift
 moon run cmd/relsift --target native -- discover examples/orders.csv --table-id orders --format text
 ```
 
-在已有 MoonBit 项目中执行 `moon add wedarp/relsift@0.4.0` 即可使用库。导入和最小调用见 [API 文档](docs/api.md)，发布版见 [Mooncakes](https://mooncakes.io/docs/wedarp/relsift@0.4.0)。
+在已有 MoonBit 项目中执行 `moon add wedarp/relsift@0.5.0` 即可使用库。导入和最小调用见 [API 文档](docs/api.md)，发布版见 [Mooncakes](https://mooncakes.io/docs/wedarp/relsift@0.5.0)。
 
 | 使用场景 | 可运行入口 | 可核查的输出 |
 | --- | --- | --- |
 | 理解无文档明细 | `discover` 读取四行订单 CSV | 8 条 FD、5 个最小唯一组合和删列反例 |
-| 检查跨表关联 | `ind` 与 `diagnose` 读取 JSON 表 | 单列包含候选、目标唯一性与多列孤儿元组 |
+| 检查跨表关联 | `ind`、`tuple-ind` 与 `diagnose` 读取 JSON 表 | 单列和多列包含候选、目标唯一性与孤儿元组 |
 | 检查下一份导出 | `compare` 读取新快照与发现报告 | 仍成立、失去最小性、违反规则、缺少列 |
 | 精简和审查函数依赖 | `moon run examples/inference` | 等价最小覆盖、两行反模型和最小决定列组 |
 
@@ -103,6 +103,12 @@ moon run cmd/relsift --target native -- verify examples/exports.json examples/ve
 
 已有明确的多列映射时，可以用 [多列包含诊断](docs/diagnostics.md#按位置验证多列包含关系) 复核整个元组。例如订单的「区域、商品」各自在库存表中出现，组合「south、P1」仍可能缺失。
 
+```sh
+moon run cmd/relsift --target native -- tuple-ind examples/composite-exports.json --target-unique-only true --format text
+```
+
+多列搜索自动发现 `orders[region, sku] ⊆ stock[warehouse, product]`，目标元组唯一。将输入换成 [缺少联合元组的样例](examples/tuple-exports.json) 会得到零条多列映射。见 [多列搜索、预算和复核](docs/tuple-discovery.md)。
+
 ## 在 MoonBit 项目中使用
 
 计算核心仅依赖 MoonBit core。CLI 文件读写使用工具链随附的 `core/async`。Node.js 用于 CLI 集成测试和公开数据基准。
@@ -123,13 +129,13 @@ for rule in result.fds {
 
 ## 算法与边界
 
-`partition` 用字符串字典编码、复合分区求交及缓存支持 `dependency` 和 `unique`。搜索按集合宽度递增；成立的 FD/UCC 对超集进行剪枝，每条返回结果都有完整删除证据。`inclusion` 构造跨表单列值集合并检验有向包含。`verify` 使用独立的直接行对或数组集合实现，不调用生产分区算法。
+`partition` 用字符串字典编码、复合分区求交及缓存支持 `dependency` 和 `unique`。搜索按集合宽度递增；成立的 FD/UCC 对超集进行剪枝，每条返回结果都有完整删除证据。`inclusion` 支持跨表单列和多列包含，使用投影剪枝和缓存。`verify` 使用独立的直接行对或数组集合实现。
 
 空串与 NULL 分开；不转换数值、大小写或 Unicode。默认拒绝 NULL，JSON 可显式选择把 NULL 当作独立值。具体输入契约见 [数据语义](docs/semantics.md)。
 
 默认 FD 左侧和 UCC 最大宽度均为 4。状态 `complete_in_domain` 只保证声明域内完成；`partial` 表示预算耗尽，空结果不能解释为没有关系。操作计数不是硬内存或 CPU 隔离。见 [算法与预算](docs/algorithms.md)、[JSON 协议与退出码](docs/protocol.md)及[实测性能](docs/performance.md)。
 
-第一版仅发现精确 FD、最小 UCC、跨表单列 IND，不发现近似依赖、因果关系或完整复合外键，不执行自动范式分解。列子集搜索具有指数规模，不能承诺任意宽表高效。
+发现范围为精确 FD、最小 UCC 和声明宽度内的跨表 IND。多列包含提供复合关联候选。列子集与映射搜索在宽表上可能有指数规模。
 
 ## 复现实验
 

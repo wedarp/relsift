@@ -7,8 +7,10 @@ import { basename, join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
 const [inputDir, baselinePath, mode] = process.argv.slice(2);
-assert.ok(inputDir && process.argv.length <= 5 && (mode === undefined || mode === '--compare-discovery'),
-  'Usage: node examples/performance/datasets.mjs DATA_DIRECTORY [BASELINE_EXECUTABLE [--compare-discovery]]');
+const tupleMode = baselinePath === '--tuple-discovery';
+assert.ok(inputDir && process.argv.length <= 5 &&
+  (tupleMode ? mode === undefined : (mode === undefined || mode === '--compare-discovery')),
+  'Usage: node examples/performance/datasets.mjs DATA_DIRECTORY [BASELINE_EXECUTABLE [--compare-discovery] | --tuple-discovery]');
 const current = ['relsift.exe', 'relsift']
   .map(file => resolve('_build/native/release/build/cmd/relsift', file))
   .find(existsSync);
@@ -17,6 +19,7 @@ const temporary = mkdtempSync(join(tmpdir(), 'relsift-bench-'));
 const generated = [];
 const workLimit = '100000000';
 const searchWidth = '4';
+const tupleWidth = '3';
 const repetitions = 7;
 const workloads = [
   ['penguins.csv', ',', 'F204DB2C753B0937CAAC3CB35258562C14F073E4BBC76BE24B4C51CE22767A93'],
@@ -62,6 +65,8 @@ function loadInput(file, delimiter, expectedHash, suppliedHeaders) {
   }
   return {
     input,
+    rows,
+    headers,
     metadata: {
       source_sha256: hash,
       input_sha256: sha256(readFileSync(input)),
@@ -94,18 +99,26 @@ function measure(executable, args) {
   return { report, samples_ms: samples, median_ms: samples[Math.floor(repetitions / 2)] };
 }
 
-function compareDiscovery(args) {
-  const runs = [resolve(baselinePath), current].map(executable => ({
-    executable, report: invoke(executable, args).report, samples: [],
+function measureAlternating(variants) {
+  const runs = variants.map(([executable, args]) => ({
+    executable, args, report: invoke(executable, args).report, samples: [],
   }));
   for (let i = 0; i < repetitions; i++) {
     for (const index of [i % 2, (i + 1) % 2]) {
       const run = runs[index];
-      const { report, elapsed } = invoke(run.executable, args);
+      const { report, elapsed } = invoke(run.executable, run.args);
       assert.deepEqual(report, run.report);
       run.samples.push(Number(elapsed.toFixed(3)));
     }
   }
+  return runs.map(({ report, samples }) => {
+    samples.sort((a, b) => a - b);
+    return { report, samples_ms: samples, median_ms: samples[Math.floor(repetitions / 2)] };
+  });
+}
+
+function compareDiscovery(args) {
+  const runs = measureAlternating([[resolve(baselinePath), args], [current, args]]);
   const [earlier, latest] = runs;
   for (const { report } of runs) assert.equal(report.status.kind, 'complete_in_domain');
   const stableOutput = report => {
@@ -113,10 +126,59 @@ function compareDiscovery(args) {
     return { ...report, tables: [{ ...table, candidates: usage.candidates }] };
   };
   assert.deepEqual(stableOutput(latest.report), stableOutput(earlier.report));
-  return runs.map(({ report, samples }) => {
-    samples.sort((a, b) => a - b);
-    return summarize({ report, samples_ms: samples, median_ms: samples[Math.floor(repetitions / 2)] }, 'discover');
+  return runs.map(run => summarize(run, 'discover'));
+}
+
+function compareTupleProjections(file, rows, headers) {
+  const targetPositions = Array.from({ length: Math.min(6, headers.length) }, (_, p) => p);
+  const sourcePositions = [3, 1, 0, 2];
+  const sourceRows = rows.filter((_, index) => index % 3 === 0);
+  const makeTable = (id, positions, selected) => ({
+    id,
+    columns: positions.map((p, i) => ({ id: `c${i}`, name: headers[p] })),
+    rows: selected.map((cells, i) => ({ id: `r${i}`, cells: positions.map(p => cells[p]) })),
   });
+  const path = join(temporary, `${basename(file)}-tuples.json`);
+  const envelope = {
+    schema_version: 1,
+    null_policy: 'reject',
+    tables: [makeTable('sample', sourcePositions, sourceRows), makeTable('full', targetPositions, rows)],
+  };
+  const encoded = JSON.stringify(envelope);
+  save(path, encoded);
+  const args = ['tuple-ind', path, '--max-ind-width', tupleWidth, '--max-work', workLimit];
+  const variants = [
+    [current, [...args, '--max-cached-projections', '0']],
+    [current, args],
+  ];
+  const [uncached, cached] = measureAlternating(variants);
+  for (const mode of [uncached, cached]) {
+    assert.equal(mode.report.status.kind, 'complete_in_domain');
+    assert.ok(mode.report.relations.some(rule =>
+      rule.source_table === 'sample' && rule.target_table === 'full' &&
+      rule.source_columns.join() === 'c0,c1,c2' && rule.target_columns.join() === 'c3,c1,c0'));
+  }
+  assert.deepEqual(uncached.report.relations, cached.report.relations);
+  for (const field of ['projection_pruned', 'tuple_checks']) {
+    assert.equal(uncached.report[field], cached.report[field]);
+  }
+  assert.equal(uncached.report.usage.candidates, cached.report.usage.candidates);
+  const stats = ({ report, ...times }) => ({
+    ...times,
+    ...Object.fromEntries(['status', 'usage', 'cached_projections', 'projections_built',
+      'projection_pruned', 'tuple_checks'].map(key => [key, report[key]])),
+    binary: report.relations.filter(rule => rule.source_columns.length === 2).length,
+    ternary: report.relations.filter(rule => rule.source_columns.length === 3).length,
+  });
+  return {
+    fixture_sha256: sha256(encoded),
+    sample_rows: sourceRows.length,
+    sample_columns: sourcePositions.length,
+    full_columns: targetPositions.length,
+    sample_column_positions: sourcePositions,
+    no_cache: stats(uncached),
+    with_cache: stats(cached),
+  };
 }
 
 function summarize(measured, mode) {
@@ -136,10 +198,16 @@ try {
   console.log(JSON.stringify({
     platform: platform(), os_release: release(), cpu: cpus()[0]?.model, node: process.version,
     repetitions, warmups: 1, max_work: workLimit,
-    max_lhs: Number(searchWidth), max_ucc_width: Number(searchWidth),
+    ...(tupleMode ? { max_ind_width: Number(tupleWidth) }
+      : { max_lhs: Number(searchWidth), max_ucc_width: Number(searchWidth) }),
   }));
   for (const [file, delimiter, hash, headers] of workloads) {
-    const { input, metadata } = loadInput(file, delimiter, hash, headers);
+    const loaded = loadInput(file, delimiter, hash, headers);
+    const { input, metadata } = loaded;
+    if (tupleMode) {
+      console.log(JSON.stringify({ file, ...metadata, ...compareTupleProjections(file, loaded.rows, loaded.headers) }));
+      continue;
+    }
     const discoverArgs = [
       'discover', input, '--max-lhs', searchWidth, '--max-ucc-width', searchWidth, '--max-work', workLimit,
     ];

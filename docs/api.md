@@ -5,7 +5,7 @@
 在消费项目中安装发布版：
 
 ```sh
-moon add wedarp/relsift@0.4.0
+moon add wedarp/relsift@0.5.0
 ```
 
 导入路径为 `wedarp/relsift`，数据模型位于 `wedarp/relsift/model`，验证器位于 `wedarp/relsift/verify`。
@@ -36,7 +36,7 @@ members = ["relsift", "analysis"]
 name = "wedarp/analysis"
 version = "0.1.0"
 import {
-  "wedarp/relsift@0.4.0",
+  "wedarp/relsift@0.5.0",
 }
 ```
 
@@ -81,7 +81,7 @@ fn main raise {
 | `/partition` | `index(Table,Meter)`；`Index::fd/unique/witness` |
 | `/dependency` | `Fd`、`Deletion`；向初始空数组输出已证明的最小 FD |
 | `/unique` | `Ucc`；向初始空数组输出已证明的最小 UCC |
-| `/inclusion` | `discover(Array[Table],limits?) -> Report` |
+| `/inclusion` | `discover(Array[Table],limits?)` 搜索单列关系，`discover_tuples(Array[Table],options?,limits?)` 搜索多列映射 |
 | `/verify` | `fd`、`unique`、`inclusion`、`check_pair`，均为独立参考实现 |
 | `/codec` | `parse_csv`、`parse_tables`、`validate`、结果 JSON 转换、`canonical`、`explain` |
 | `/regression` | `compare(Table, Discovery, limits?)`，对新快照重新判定旧规则 |
@@ -96,6 +96,8 @@ fn main raise {
 `verify_fd` 与 `verify_ucc` 同时检查约束成立和整组最小性证据。`verify.check_pair(table,parent,pair,rhs=Some(column))` 只检查某个具体 FD 反例；省略 `rhs` 时检查父集合上的碰撞。不合法的列 ID 是输入错误，伪造或缺失行对返回 false。
 
 独立单约束验证返回 `Verdict { holds, counterexample }`。`verify.inclusion(source,source_column,target,target_column,orphan_limit=10)` 返回成立状态、不同值数量、目标唯一性、孤儿不同值总数和有界摘要；它适合复核失败候选，不会自动搜索其他列对。
+
+`inclusion.discover_tuples` 返回 `TupleReport`，包括域参数、预算消耗、已证映射和投影计数。每条 `TupleInd` 的目标列数组保留与源列的配对顺序。用 `verify.tuple_inclusion` 独立验证成立候选或诊断失败候选。见 [多列输入和结果契约](tuple-discovery.md)。
 
 根包另提供 `session(Table,limits?)`、`Session::step(quota)`、`Session::snapshot()` 和 `Session::progress()`，见[分步搜索](sessions.md)。快照中的结果数组独立于会话内部状态。
 
