@@ -34,7 +34,7 @@ pub fn explain_diagnosis(value : Json) -> String raise {
       "FD 诊断：\{conclusion}；冲突组 \{natural(field(m, "conflicting_groups"))}，违反行对 \{string(field(m, "violating_pairs"))}。"
     "unique_diagnosis" =>
       "唯一组合诊断：\{conclusion}；碰撞组 \{natural(field(m, "collision_groups"))}，碰撞行对 \{string(field(m, "collision_pairs"))}，超额记录 \{natural(field(m, "excess_rows"))}。"
-    "ind_diagnosis" => {
+    "ind_diagnosis" | "tuple_ind_diagnosis" => {
       let target = field(m, "target_unique")
       let unique_text = if target == Json::null() {
         "尚未判定"
@@ -43,7 +43,12 @@ pub fn explain_diagnosis(value : Json) -> String raise {
       } else {
         "否"
       }
-      "包含诊断：\{conclusion}；孤儿值 \{natural(field(m, "orphan_values"))}，孤儿记录 \{natural(field(m, "orphan_rows"))}；目标唯一：\{unique_text}。"
+      let summary = if m.contains("orphan_tuples") {
+        "孤儿元组 \{natural(field(m, "orphan_tuples"))}"
+      } else {
+        "孤儿值 \{natural(field(m, "orphan_values"))}"
+      }
+      "包含诊断：\{conclusion}；\{summary}，孤儿记录 \{natural(field(m, "orphan_rows"))}；目标唯一：\{unique_text}。"
     }
     _ => raise @model.Invalid("expected diagnosis report")
   }

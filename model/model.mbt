@@ -115,15 +115,27 @@ pub fn Table::positions(
   self : Table,
   ids : Array[String],
 ) -> Array[Int32] raise InputError {
+  let result = self.ordered_positions(ids)
+  result.sort()
+  result
+}
+
+///|
+/// Resolve a column mapping in caller order, rejecting duplicate IDs.
+pub fn Table::ordered_positions(
+  self : Table,
+  ids : Array[String],
+) -> Array[Int32] raise InputError {
   let result = []
+  let seen : Map[Int32, Bool] = Map([])
   for id in ids {
     let index = self.position(id)
-    if result.contains(index) {
+    if seen.contains(index) {
       raise Invalid("repeated column ID")
     }
+    seen[index] = true
     result.push(index)
   }
-  result.sort()
   result
 }
 

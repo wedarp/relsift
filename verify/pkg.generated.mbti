@@ -20,6 +20,8 @@ pub fn fd(@model.Table, Array[String], String) -> Verdict raise @model.InputErro
 
 pub fn inclusion(@model.Table, String, @model.Table, String, orphan_limit? : Int32) -> InclusionVerdict raise @model.InputError
 
+pub fn tuple_inclusion(@model.Table, Array[String], @model.Table, Array[String], orphan_limit? : Int32, limits? : @budget.Limits) -> TupleInclusion raise
+
 pub fn unique(@model.Table, Array[String]) -> Verdict raise @model.InputError
 
 // Errors
@@ -128,6 +130,29 @@ pub fn Pair::equal(Self, Self) -> Bool
 pub fn Pair::not_equal(Self, Self) -> Bool
 #deprecated
 pub fn Pair::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TupleInclusion {
+  source_table : String
+  target_table : String
+  source_columns : Array[String]
+  target_columns : Array[String]
+  status : @budget.Status
+  holds : Bool?
+  target_unique : Bool?
+  source_rows_checked : Int32
+  source_distinct : Int32
+  target_distinct : Int32?
+  orphan_tuples : Int32
+  orphan_rows : Int32
+  orphans : Array[TupleOrphan]
+  usage : @budget.Usage
+}
+
+pub(all) struct TupleOrphan {
+  values : Array[String?]
+  first_source_row : String
+  source_count : Int32
+}
 
 #derive(Eq, @debug.Debug)
 pub(all) struct UniqueDiagnosis {

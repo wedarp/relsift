@@ -72,6 +72,8 @@ moon run cmd/relsift --target native -- verify examples/exports.json examples/ve
 
 发现 `orders.product_id ⊆ products.product_id`，两侧不同值数量为 2、3，目标列唯一。反方向验证失败，孤儿摘要为 `P3`。目标有重复值时，包含仍可能成立，报告会将 `target_unique` 标为 `false`。
 
+已有明确的多列映射时，可以用 [多列包含诊断](docs/diagnostics.md#按位置验证多列包含关系) 复核整个元组。例如订单的「区域、商品」各自在库存表中出现，组合「south、P1」仍可能缺失。
+
 ## 在 MoonBit 项目中使用
 
 核心没有第三方模块依赖，不需要数据库、JVM、Python 或外部服务运行时。CLI 的文件读写使用随工具链分发的 `core/async`；Node.js 只用于集成测试。

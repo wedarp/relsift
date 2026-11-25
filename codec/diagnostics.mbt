@@ -93,6 +93,7 @@ pub fn diagnose(
 ) -> Json raise {
   let rule = object(parse_json(request))
   match string(field(rule, "kind")) {
+    "tuple_ind" => diagnose_tuple_request(tables, rule, limits)
     "fd" => {
       only(rule, ["kind", "table", "lhs", "rhs"])
       fd_diagnosis(

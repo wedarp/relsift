@@ -39,6 +39,30 @@ const orderArgs = ['discover', 'examples/orders.csv', '--table-id', 'orders'];
 const rows = [ ['O1', '1', 'P1', 'Pen'], ['O1', '2', 'P2', 'Book'], ['O2', '1', 'P2', 'Book'], ['O2', '2', 'P1', 'Pen'] ];
 const positions = { order_id: 0, line_no: 1, product_id: 2, product_name: 3 };
 
+test('ordered tuple diagnosis reports joint orphans and preserves source multiplicity', () => {
+  const args = ['diagnose', 'examples/tuple-exports.json', 'examples/diagnose-tuple-ind.json'];
+  const result = runText(args, 1);
+  assert.match(result.explanation, /孤儿元组 1/);
+  assert.deepEqual(result.json.target_columns, ['warehouse', 'product']);
+  assert.equal(result.json.target_unique, true);
+  assert.deepEqual(result.json.orphans, [
+    { first_source_row: 'o2', source_count: 2, values: ['south', 'P1'] },
+  ]);
+  assert.equal(result.json.orphan_rows, 2);
+  const partial = run([...args, '--max-work', '0'], 3).json;
+  assert.equal(partial.holds, null);
+  assert.equal(partial.target_distinct, null);
+  assert.equal(partial.counts_complete, false);
+  const rule = JSON.parse(readFileSync(args[2], 'utf8'));
+  const countOnly = fixture('tuple-count-only.json', JSON.stringify({ ...rule, orphan_limit: 0 }));
+  const summary = run(['diagnose', args[1], countOnly, '--max-results', '0'], 1).json;
+  assert.equal(summary.counts_complete, true);
+  assert.equal(summary.orphans_omitted, 1);
+  assert.deepEqual(summary.orphans, []);
+  const invalid = fixture('tuple-invalid.json', JSON.stringify({ ...rule, target_columns: ['product'] }));
+  assert.equal(run(['diagnose', args[1], invalid], 2).json.status.kind, 'failed');
+});
+
 test('all observed rules, minimality evidence and duplicate multiplicity', () => {
   const result = run(orderArgs);
   const table = result.json.tables[0];

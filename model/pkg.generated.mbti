@@ -65,6 +65,7 @@ pub struct Table {
 }
 pub fn Table::column_count(Self) -> Int32
 pub fn Table::columns(Self) -> Array[Column]
+pub fn Table::ordered_positions(Self, Array[String]) -> Array[Int32] raise InputError
 pub fn Table::position(Self, String) -> Int32 raise InputError
 pub fn Table::positions(Self, Array[String]) -> Array[Int32] raise InputError
 pub fn Table::row_count(Self) -> Int32

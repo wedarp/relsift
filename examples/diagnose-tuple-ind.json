@@ -1,0 +1,8 @@
+{
+  "kind": "tuple_ind",
+  "source_table": "orders",
+  "source_columns": ["region", "sku"],
+  "target_table": "stock",
+  "target_columns": ["warehouse", "product"],
+  "orphan_limit": 10
+}
