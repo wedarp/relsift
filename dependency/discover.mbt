@@ -17,12 +17,9 @@ pub(all) struct Fd {
 /// Append only fully proved minimal nontrivial FDs, in increasing LHS width.
 /// Exhausted propagates; the caller may keep the already appended results.
 pub fn discover(idx : @partition.Index, out : Array[Fd]) -> Unit raise {
-  if !out.is_empty() {
-    raise @model.Invalid("discovery sink must initially be empty")
-  }
-  let cols = idx.table.columns()
+  let search = searcher(idx, out)
   let m = idx.meter
-  let width = cols.length()
+  let width = idx.table.column_count()
   let max_lhs = Int32::min(m.limits.max_lhs, Int32::max(0, width - 1))
   for size in 0..<=max_lhs {
     @budget.combinations(width, size, m, fn(x) raise {
@@ -30,7 +27,7 @@ pub fn discover(idx : @partition.Index, out : Array[Fd]) -> Unit raise {
         if x.contains(a) {
           continue
         }
-        consider(idx, x, a, out)
+        search.consider(x, a)
       }
     })
   }
@@ -45,17 +42,7 @@ pub fn consider(
   out : Array[Fd],
 ) -> Unit raise {
   let cols = idx.table.columns()
-  for i, c in x {
-    if i > 0 && x[i - 1] >= c {
-      raise @model.Invalid("FD positions must be strictly increasing")
-    }
-  }
-  if a < 0 ||
-    a >= cols.length() ||
-    x.contains(a) ||
-    x.any(c => c < 0 || c >= cols.length()) {
-    raise @model.Invalid("invalid FD candidate positions")
-  }
+  validate_candidate(cols.length(), x, a)
   let m = idx.meter
   m.candidate()
   let names = x.map(c => cols[c].id)
@@ -65,19 +52,47 @@ pub fn consider(
       return
     }
   }
+  if prove(idx, cols, x, a) is Some(rule) {
+    out.push(rule)
+  }
+}
+
+///|
+fn validate_candidate(
+  width : Int32,
+  x : Array[Int32],
+  a : Int32,
+) -> Unit raise @model.InputError {
+  for i, c in x {
+    if i > 0 && x[i - 1] >= c {
+      raise @model.Invalid("FD positions must be strictly increasing")
+    }
+  }
+  if a < 0 || a >= width || x.contains(a) || x.any(c => c < 0 || c >= width) {
+    raise @model.Invalid("invalid FD candidate positions")
+  }
+}
+
+///|
+fn prove(
+  idx : @partition.Index,
+  cols : Array[@model.Column],
+  x : Array[Int32],
+  a : Int32,
+) -> Fd? raise {
   if !idx.fd(x, a) {
-    return
+    return None
   }
   let deletions = []
   for removed in x {
     let parent = x.filter(c => c != removed)
     match idx.witness(parent, rhs=Some(a)) {
       Some(pair) => deletions.push({ removed: cols[removed].id, pair, })
-      None => return
+      None => return None
     }
   }
-  m.result()
-  out.push({ lhs: names, rhs: cols[a].id, deletions, })
+  idx.meter.result()
+  Some({ lhs: x.map(c => cols[c].id), rhs: cols[a].id, deletions, })
 }
 
 ///|

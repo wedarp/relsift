@@ -7,10 +7,16 @@ pub(all) enum Progress {
 }
 
 ///|
+priv struct SessionIndexes {
+  partition : @partition.Index
+  dependencies : @dependency.Searcher
+}
+
+///|
 pub struct Session {
   priv table : @model.Table
   priv meter : @budget.Meter
-  priv mut index : @partition.Index?
+  priv mut indexes : SessionIndexes?
   priv fds : Array[@dependency.Fd]
   priv uccs : Array[@unique.Ucc]
   priv mut progress : Progress
@@ -30,7 +36,7 @@ pub fn session(
   {
     table,
     meter: @budget.meter(limits),
-    index: None,
+    indexes: None,
     fds: [],
     uccs: [],
     progress: Running,
@@ -113,12 +119,14 @@ pub fn Session::step(self : Session, quota : Int32) -> Progress raise {
     return self.progress
   }
   try {
-    let idx = match self.index {
-      Some(idx) => idx
+    let indexes = match self.indexes {
+      Some(indexes) => indexes
       None => {
-        let idx = @partition.index(self.table, self.meter)
-        self.index = Some(idx)
-        idx
+        let partition = @partition.index(self.table, self.meter)
+        let dependencies = @dependency.searcher(partition, self.fds)
+        let indexes = { partition, dependencies, }
+        self.indexes = Some(indexes)
+        indexes
       }
     }
     self.normalize()
@@ -126,10 +134,10 @@ pub fn Session::step(self : Session, quota : Int32) -> Progress raise {
     while processed < quota && self.progress is Running {
       self.meter.charge(self.chosen.length().to_int64() + 1L)
       if !self.fd_complete {
-        @dependency.consider(idx, self.chosen, self.rhs, self.fds)
+        indexes.dependencies.consider(self.chosen, self.rhs)
         self.rhs += 1
       } else {
-        @unique.consider(idx, self.chosen, self.uccs)
+        @unique.consider(indexes.partition, self.chosen, self.uccs)
         self.advance()
       }
       processed += 1
