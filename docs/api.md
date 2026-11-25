@@ -5,7 +5,7 @@
 在消费项目中安装发布版：
 
 ```sh
-moon add wedarp/relsift@0.2.0
+moon add wedarp/relsift@0.2.1
 ```
 
 导入路径为 `wedarp/relsift`，数据模型位于 `wedarp/relsift/model`，验证器位于 `wedarp/relsift/verify`。
@@ -36,7 +36,7 @@ members = ["relsift", "analysis"]
 name = "wedarp/analysis"
 version = "0.1.0"
 import {
-  "wedarp/relsift@0.2.0",
+  "wedarp/relsift@0.2.1",
 }
 ```
 

@@ -11,6 +11,26 @@
 
 **发现的是当前数据中观察到的规律，不是业务真理；约束需要人工确认。** 唯一组合不是已声明主键，包含关系不是已确认外键。
 
+## 安装与运行
+
+按 [MoonBit 安装指南](https://docs.moonbitlang.com/zh-cn/latest/tutorial/tour.html) 准备工具链，用 `moon version --all` 查看版本。本仓库用 `moon 0.1.20261104`、`moonc v0.10.20+65efd5b93` 和同版本 core 验证。原生目标需要平台 C 工具链，CLI 也可在 Moonrun 中使用 `--target wasm`。Node.js 24.19.0 用于 CLI 测试和公开数据基准。
+
+```sh
+git clone https://github.com/wedarp/relsift.git
+cd relsift
+moon run cmd/relsift --target native -- discover examples/orders.csv --table-id orders --format text
+```
+
+在已有 MoonBit 项目中执行 `moon add wedarp/relsift@0.2.1` 即可使用库。导入和最小调用见 [API 文档](docs/api.md)，发布版见 [Mooncakes](https://mooncakes.io/docs/wedarp/relsift@0.2.1)。
+
+| 使用场景 | 可运行入口 | 可核查的输出 |
+| --- | --- | --- |
+| 理解无文档明细 | `discover` 读取四行订单 CSV | 8 条 FD、5 个最小唯一组合和删列反例 |
+| 检查跨表关联 | `ind` 与 `diagnose` 读取 JSON 表 | 单列包含候选、目标唯一性与多列孤儿元组 |
+| 检查下一份导出 | `compare` 读取新快照与发现报告 | 仍成立、失去最小性、违反规则、缺少列 |
+
+相关命令详见下列实验和 [CLI 协议](docs/protocol.md)。版本变化见 [更新记录](CHANGELOG.md)。
+
 ## 实验一：完整发现，而不是只验证预设答案
 
 上述数据在 [examples/orders.csv](examples/orders.csv)。令 `O=order_id`、`L=line_no`、`P=product_id`、`N=product_name`，全部左侧最小、单属性右侧的非平凡 FD 是：
@@ -59,6 +79,14 @@ FD 仍为 8 条，所有唯一组合失效。引擎保留实际行重数，不�
 
 接到下一份导出时，`compare INPUT BASELINE.json` 会重新检查旧规则，返回新的反例或更小成立集合，保留原报告的完成状态。见[快照回归](docs/regression.md)。
 
+```sh
+moon run cmd/relsift --target wasm -- discover examples/orders.csv --table-id orders > orders-report.json
+moon run cmd/relsift --target native -- verify-report examples/orders.csv orders-report.json --table-id orders
+moon run cmd/relsift --target native -- compare examples/orders-duplicate.csv orders-report.json --table-id orders
+```
+
+证据复核退出 0，比较退出 1，并报告五个唯一组合冲突。Windows PowerShell 5.1 使用 `Out-File -Encoding utf8` 保存报告，CLI 输入应为 UTF-8。
+
 需要在候选之间让出控制时，可用库的 `session`/`step` API。分区缓存、遍历位置和预算保留在同一会话中；[分步示例](docs/sessions.md)同时展示报告证据复核。
 
 ## 实验三：跨表关联候选
@@ -78,7 +106,7 @@ moon run cmd/relsift --target native -- verify examples/exports.json examples/ve
 
 计算核心仅依赖 MoonBit core。CLI 文件读写使用工具链随附的 `core/async`。Node.js 用于 CLI 集成测试和公开数据基准。
 
-在消费项目中执行 `moon add wedarp/relsift@0.2.0` 安装发布版，或通过 `moon.work` 引用源码。导入示例见 [API 文档](docs/api.md)。
+也可通过 `moon.work` 在同一工作区引用源码。导入示例见 [API 文档](docs/api.md)。
 
 ```moonbit
 let t = @codec.parse_csv(csv_text, "orders")
@@ -117,4 +145,4 @@ moon run examples/performance --target native --release
 
 测试包括 689 张二值表的分区差分、同一范围的完整发现穷举、固定种子的 300 张多值表、最小性证据重检、失败用例缩减，以及行列变形与预算中断。测试数量不能替代对任意输入的数学证明。
 
-原创源码采用 MIT，作者为 wedarp。使用的 MoonBit core 按上游 Apache-2.0 许可分发；不在仓库中复制其实现。分区与依赖发现属于已有研究领域，本项目不宣称发明这些数学概念。
+源码与项目示例使用 [MIT 许可证](LICENSE)，版权人为 wedarp。运行时、CI 工具和基准数据的来源与许可见 [第三方来源](THIRD_PARTY.md)。

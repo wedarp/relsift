@@ -51,7 +51,7 @@ moon build cmd/relsift --target native --release
 node examples/performance/datasets.mjs DATA_DIRECTORY [BASELINE_EXECUTABLE]
 ```
 
-`DATA_DIRECTORY` 包含 [penguins.csv](https://raw.githubusercontent.com/allisonhorst/palmerpenguins/v0.1.0/inst/extdata/penguins.csv)，以及从 [Wine Quality 官方压缩包](https://archive.ics.uci.edu/static/public/186/wine+quality.zip) 解出的 `winequality-red.csv` 和 `winequality-white.csv`。可选参数为旧版原生 CLI 的绝对路径，本次使用 `a0f74b8`。脚本输出源文件及输入哈希、每列基数、重复数量、七次耗时、状态与工作单位。每组先预热一次，并检查重复执行的输出一致。
+`DATA_DIRECTORY` 包含 [penguins.csv](https://raw.githubusercontent.com/allisonhorst/palmerpenguins/v0.1.0/inst/extdata/penguins.csv)，以及从 [Wine Quality 官方压缩包](https://archive.ics.uci.edu/static/public/186/wine+quality.zip) 解出的 `winequality-red.csv` 和 `winequality-white.csv`。当前脚本同时读取下节列出的 `abalone.data` 与 `iris.data`。可选参数为旧版原生 CLI 的绝对路径，本次使用 `a0f74b8`。脚本输出源文件及输入哈希、每列基数、重复数量、七次耗时、状态与工作单位。每组先预热一次，并检查重复执行的输出一致。
 
 本次使用 Windows 10.0.19045、Intel Core i7-9700、Node v24.19.0 和相同的 MoonBit 固定工具链。计时覆盖启动进程、读取文件、计算及 JSON 输出。发现宽度上限均为 4，发现和回归分别限制为 1 亿工作单位。三组发现均在声明域内完成。
 
@@ -62,3 +62,19 @@ node examples/performance/datasets.mjs DATA_DIRECTORY [BASELINE_EXECUTABLE]
 | 白葡萄酒 | 4898 × 12 | 937 | 186 / 0 | 1155.460 ms | 2112.067 ms | 1820.001 ms | 3 → 186 |
 
 回归用发现报告检查同一快照，覆盖大量仍成立的规则。旧版两组葡萄酒回归均在 `max_work` 耗尽时停止，耗时对应部分结果。脚本逐项核对旧版已完成的规则和新版对应前缀。新版三组回归消耗分别为 184034、26140884、19184544 个工作单位。计费随算法更新而变化。宽度四下观察到的葡萄酒函数依赖仍需要业务解释。
+
+## 0.2.1 公开数据复测
+
+将 [Abalone 压缩包](https://archive.ics.uci.edu/static/public/1/abalone.zip) 的 `abalone.data` 和 [Iris 压缩包](https://archive.ics.uci.edu/static/public/53/iris.zip) 的 `iris.data` 放入同一目录。脚本核对原文件哈希，为无表头的原始数据添加列名，排除文件尾空行，保留所有记录的值和重数。来源与许可证见 [第三方来源](../THIRD_PARTY.md)。
+
+沿用上述环境、预算和计时方法。五组的发现与 0.2.1 回归均在声明域内完成，旧版已输出的回归记录与新版前缀一致。表内为七次测量的中位数。
+
+| 数据 | 行 × 列 | 重复整行数 | FD / UCC | 发现耗时 | 0.2.1 回归耗时 | 旧版 → 0.2.1 完成规则数 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 企鹅 | 344 × 8 | 0 | 25 / 7 | 42.961 ms | 44.962 ms | 32 → 32 |
+| 红葡萄酒 | 1599 × 12 | 240 | 782 / 0 | 484.424 ms | 2715.133 ms | 25 → 782 |
+| 白葡萄酒 | 4898 × 12 | 937 | 186 / 0 | 1192.687 ms | 2493.544 ms | 3 → 186 |
+| Abalone | 4177 × 9 | 0 | 97 / 18 | 373.941 ms | 1372.794 ms | 5 → 115 |
+| Iris | 150 × 5 | 3 | 4 / 0 | 21.614 ms | 22.247 ms | 4 → 4 |
+
+旧版在两组葡萄酒及 Abalone 上提前耗尽预算。Iris 两版都完成，旧版中位数为 21.942 ms。小数据的端到端计时包含进程启动，差异不宜归因于算法本身。

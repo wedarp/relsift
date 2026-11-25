@@ -22,6 +22,10 @@ const workloads = [
   ['penguins.csv', ',', 'F204DB2C753B0937CAAC3CB35258562C14F073E4BBC76BE24B4C51CE22767A93'],
   ['winequality-red.csv', ';', '4A402CF041B025D4566D954C3B9BA8635A3A8A01E039005D97D6A710278CF05E'],
   ['winequality-white.csv', ';', '76C3F809815C17C07212622F776311FAEB31E87610D52C26D87D6E361B169836'],
+  ['abalone.data', ',', 'DE37CDCDCAAA50C309D514F248F7C2302A5F1F88C168905EBA23FE2FBC78449F',
+    ['sex', 'length', 'diameter', 'height', 'whole_weight', 'shucked_weight', 'viscera_weight', 'shell_weight', 'rings']],
+  ['iris.data', ',', '6F608B71A7317216319B4D27B4D9BC84E6ABD734EDA7872B71A458569E2656C0',
+    ['sepal_length', 'sepal_width', 'petal_length', 'petal_width', 'class']],
 ];
 
 function sha256(bytes) {
@@ -33,23 +37,29 @@ function save(file, contents) {
   generated.push(file);
 }
 
-function loadInput(file, delimiter, expectedHash) {
+function loadInput(file, delimiter, expectedHash, suppliedHeaders) {
   const raw = readFileSync(join(inputDir, file));
   const hash = sha256(raw);
   assert.equal(hash, expectedHash, file);
   const text = new TextDecoder('utf-8', { fatal: true }).decode(raw);
-  const lines = text.trimEnd().split(/\r?\n/);
+  const lines = text.split(/\r?\n/);
+  while (lines.at(-1) === '') lines.pop();
   // These fixtures have quoted headers at most, and no quoted data cells.
-  const headers = lines[0].split(delimiter).map(s => s.replace(/^"|"$/g, ''));
-  const rows = lines.slice(1).map(line => {
+  const headers = suppliedHeaders ?? lines[0].split(delimiter).map(s => s.replace(/^"|"$/g, ''));
+  const dataLines = suppliedHeaders ? lines : lines.slice(1);
+  const rows = dataLines.map(line => {
     assert.ok(!line.includes('"'), 'Unexpected quoted data cell');
     const values = line.split(delimiter);
     assert.equal(values.length, headers.length, 'Unexpected input row width');
     return values;
   });
   if (delimiter === ';') assert.ok(!text.includes(','), 'Unexpected comma in wine data');
-  const input = join(temporary, file);
-  save(input, delimiter === ',' ? raw : text.replaceAll(';', ','));
+  const input = join(temporary, basename(file, '.data') + (suppliedHeaders ? '.csv' : ''));
+  if (suppliedHeaders) {
+    save(input, [headers.join(','), ...dataLines, ''].join('\n'));
+  } else {
+    save(input, delimiter === ',' ? raw : text.replaceAll(';', ','));
+  }
   return {
     input,
     metadata: {
@@ -103,8 +113,8 @@ try {
     repetitions, warmups: 1, max_work: workLimit,
     max_lhs: Number(searchWidth), max_ucc_width: Number(searchWidth),
   }));
-  for (const [file, delimiter, hash] of workloads) {
-    const { input, metadata } = loadInput(file, delimiter, hash);
+  for (const [file, delimiter, hash, headers] of workloads) {
+    const { input, metadata } = loadInput(file, delimiter, hash, headers);
     const discovery = measure(current, [
       'discover', input, '--max-lhs', searchWidth, '--max-ucc-width', searchWidth, '--max-work', workLimit,
     ]);
