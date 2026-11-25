@@ -128,6 +128,49 @@ test('only successful directed INDs are returned', () => {
   assert.deepEqual(result.relations, [{ source_table: 'orders', source_column: 'product_id', target_table: 'products', target_column: 'product_id', source_distinct: 2, target_distinct: 3, target_unique: true }]);
 });
 
+test('composite discovery finds the flipped mapping and independently diagnoses missing tuples', () => {
+  const args = ['tuple-ind', 'examples/composite-exports.json'];
+  const found = run(args);
+  assert.equal(found.json.kind, 'tuple_ind_discovery');
+  assert.equal(found.json.status.kind, 'complete_in_domain');
+  assert.equal(found.json.options.max_width, 2);
+  assert.deepEqual(found.json.relations, [{
+    source_table: 'orders', source_columns: ['region', 'sku'],
+    target_table: 'stock', target_columns: ['warehouse', 'product'],
+    source_distinct: 3, target_distinct: 4, target_unique: true,
+  }]);
+  const zeros = run(['tuple-ind', 'examples/tuple-exports.json']).json;
+  assert.equal(zeros.status.kind, 'complete_in_domain');
+  assert.deepEqual(zeros.relations, []);
+  const checked = run(['diagnose', args[1], 'examples/diagnose-tuple-ind.json']).json;
+  assert.equal(checked.holds, true);
+  assert.equal(checked.source_distinct, 3);
+  assert.equal(checked.target_distinct, 4);
+  const rendered = spawnSync(executable, [...args, '--format', 'text'], { encoding: 'utf8' });
+  assert.ifError(rendered.error);
+  assert.equal(rendered.status, 0);
+  assert.match(rendered.stdout, /orders\[region, sku\] ⊆ stock\[warehouse, product\]/);
+  assert.equal(run(args).raw, found.raw);
+});
+
+test('composite discovery constrains option scope and reports budget interruption', () => {
+  const args = ['tuple-ind', 'examples/composite-exports.json'];
+  for (const option of ['--max-candidates', '--max-work', '--max-results']) {
+    const partial = run([...args, option, '0'], 3).json;
+    assert.equal(partial.status.kind, 'partial');
+    assert.deepEqual(partial.relations, []);
+  }
+  for (const [option, value] of [['--max-ind-width', '1'], ['--target-unique-only', 'yes'], ['--max-cached-projections', '-1']]) {
+    assert.equal(run([...args, option, value], 2).json.status.kind, 'failed');
+  }
+  assert.match(run(['ind', 'missing.json', '--max-ind-width', '2'], 2).json.error, /requires tuple-ind/);
+  assert.match(run(['tuple-ind', 'examples/orders.csv'], 2).json.error, /requires JSON/);
+  const uncached = run([...args, '--max-cached-projections', '0', '--target-unique-only', 'true']).json;
+  assert.equal(uncached.cached_projections, 0);
+  assert.equal(uncached.usage.cache_hits, '0');
+  assert.deepEqual(uncached.relations, run(args).json.relations);
+});
+
 test('budget exhaustion is partial, never absence or failure', () => {
   for (const [option, value] of [['--max-work', '0'], ['--max-candidates', '0'], ['--max-results', '0']]) {
     const result = run([...orderArgs, option, value], 3).json;

@@ -66,4 +66,7 @@ jobs:
           moon run cmd/relsift --target native --release -- discover examples/orders.csv --table-id orders > "$RUNNER_TEMP/relsift-native.json"
           moon run cmd/relsift --target wasm --release -- discover examples/orders.csv --table-id orders > "$RUNNER_TEMP/relsift-wasm.json"
           diff -u "$RUNNER_TEMP/relsift-native.json" "$RUNNER_TEMP/relsift-wasm.json"
+          moon run cmd/relsift --target native --release -- tuple-ind examples/composite-exports.json > "$RUNNER_TEMP/relsift-tuple-native.json"
+          moon run cmd/relsift --target wasm --release -- tuple-ind examples/composite-exports.json > "$RUNNER_TEMP/relsift-tuple-wasm.json"
+          diff -u "$RUNNER_TEMP/relsift-tuple-native.json" "$RUNNER_TEMP/relsift-tuple-wasm.json"
           moon package --frozen

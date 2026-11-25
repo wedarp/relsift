@@ -30,6 +30,8 @@ pub fn explain_recheck(@json.Json) -> String raise
 
 pub fn explain_regression(@json.Json) -> String raise
 
+pub fn explain_tuple_discovery(@inclusion.TupleReport) -> String
+
 pub fn fd_diagnosis(@verify.FdDiagnosis) -> @json.Json
 
 pub fn field(Map[String, @json.Json], String) -> @json.Json raise @model.InputError
@@ -61,6 +63,8 @@ pub fn regression(@regression.Report) -> @json.Json
 pub fn status(@budget.Status) -> @json.Json
 
 pub fn string(@json.Json) -> String raise @model.InputError
+
+pub fn tuple_discovery(@inclusion.TupleReport) -> @json.Json
 
 pub fn unique_diagnosis(@verify.UniqueDiagnosis) -> @json.Json
 

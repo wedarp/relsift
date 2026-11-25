@@ -127,6 +127,23 @@ async fn execute(args : Array[String]) -> Int32 {
         0
       }
     }
+    "tuple-ind" => {
+      let result = @inclusion.discover_tuples(
+        tables,
+        options=options.tuple_options,
+        limits~,
+      )
+      if format == "text" {
+        println(@codec.explain_tuple_discovery(result))
+      } else {
+        println(@codec.canonical(@codec.tuple_discovery(result)))
+      }
+      if result.status is @budget.Partial(_) {
+        3
+      } else {
+        0
+      }
+    }
     "verify" => {
       let report = @codec.validate(tables, read_input(rule_path.unwrap()))
       let holds = @codec.field(@codec.object(report), "holds") ==

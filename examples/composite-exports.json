@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "null_policy": "reject",
+  "tables": [
+    {
+      "id": "orders",
+      "columns": [{"id":"region","name":"区域"},{"id":"sku","name":"商品"}],
+      "rows": [
+        {"id":"o1","cells":["north","P1"]},
+        {"id":"o2","cells":["south","P1"]},
+        {"id":"o3","cells":["north","P2"]},
+        {"id":"o4","cells":["south","P1"]}
+      ]
+    },
+    {
+      "id": "stock",
+      "columns": [{"id":"product","name":"商品"},{"id":"warehouse","name":"仓库"}],
+      "rows": [
+        {"id":"s1","cells":["P1","north"]},
+        {"id":"s2","cells":["P1","south"]},
+        {"id":"s3","cells":["P2","north"]},
+        {"id":"s4","cells":["P2","south"]}
+      ]
+    }
+  ]
+}
