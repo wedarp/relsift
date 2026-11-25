@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wedarp/relsift/inference"
+
+import {
+  "wedarp/relsift/budget",
+  "wedarp/relsift/model",
+}
+
+// Values
+pub fn theory(Array[String], Array[Rule]) -> Theory raise @model.InputError
+
+// Errors
+
+// Types and methods
+pub(all) struct Closure {
+  seeds : Array[String]
+  attributes : Array[String]
+  steps : Array[Step]
+  status : @budget.Status
+  usage : @budget.Usage
+}
+
+pub(all) struct Implication {
+  lhs : Array[String]
+  rhs : String
+  outcome : Outcome
+  status : @budget.Status
+  usage : @budget.Usage
+}
+
+pub(all) enum Outcome {
+  Entailed(Array[Step])
+  Refuted(Array[String])
+  Undetermined
+}
+
+pub(all) struct Rule {
+  lhs : Array[String]
+  rhs : String
+}
+
+pub(all) struct Step {
+  rule_index : Int32
+  derived : String
+}
+
+pub struct Theory {
+  // private fields
+}
+pub fn Theory::closure(Self, Array[String], limits? : @budget.Limits) -> Closure raise
+pub fn Theory::explain(Self, Closure, String) -> Array[Step]? raise @model.InputError
+pub fn Theory::implies(Self, Array[String], String, limits? : @budget.Limits) -> Implication raise
+pub fn Theory::rules(Self) -> Array[Rule]
+pub fn Theory::verify_counterexample(Self, Array[String], String, Array[String]) -> Bool
+pub fn Theory::verify_entailment(Self, Array[String], String, Array[Step]) -> Bool
+pub fn Theory::verify_trace(Self, Closure) -> Bool
+
+// Type aliases
+
+// Traits

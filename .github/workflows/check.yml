@@ -54,6 +54,7 @@ jobs:
         run: |
           moon run examples/library
           moon run examples/stepped
+          moon run examples/inference
           moon build --target native --release --deny-warn
           node --test tests/cli.test.mjs
           moon run examples/performance --target native --release
