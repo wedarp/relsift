@@ -5,7 +5,7 @@
 在消费项目中安装发布版：
 
 ```sh
-moon add wedarp/relsift@0.3.0
+moon add wedarp/relsift@0.4.0
 ```
 
 导入路径为 `wedarp/relsift`，数据模型位于 `wedarp/relsift/model`，验证器位于 `wedarp/relsift/verify`。
@@ -36,7 +36,7 @@ members = ["relsift", "analysis"]
 name = "wedarp/analysis"
 version = "0.1.0"
 import {
-  "wedarp/relsift@0.3.0",
+  "wedarp/relsift@0.4.0",
 }
 ```
 
@@ -85,7 +85,7 @@ fn main raise {
 | `/verify` | `fd`、`unique`、`inclusion`、`check_pair`，均为独立参考实现 |
 | `/codec` | `parse_csv`、`parse_tables`、`validate`、结果 JSON 转换、`canonical`、`explain` |
 | `/regression` | `compare(Table, Discovery, limits?)`，对新快照重新判定旧规则 |
-| `/inference` | `theory(columns, rules)`，精确闭包、蕴含判定、独立证明与反模型复核 |
+| `/inference` | `theory(columns,rules)`，精确闭包、蕴含判定、最小覆盖、规则集比较与模式候选键 |
 
 完整签名由各包的 `pkg.generated.mbti` 给出，用 `moon info` 生成。常规调用应从根包和 `/inclusion` 进入；低层分区/发现入口供自定义实验使用。分区的列位置必须严格递增、无重复且在范围内；FD 右侧必须在范围内且不在左侧。
 
@@ -103,7 +103,7 @@ fn main raise {
 
 `codec.explain_diagnosis`、`explain_recheck`、`explain_regression` 接受该包生成的相应 JSON 报告，返回中文摘要。摘要保留部分状态、未知成立状态与原基线完成声明；详细证据仍在 JSON 报告中。CLI 用 `--format text` 调用这些入口。
 
-`inference.Theory` 可以重复查询同一组前提，`closure` 返回所有已证属性、`implies` 回答单一目标、`explain` 提取已有证明中目标所需的步骤。见 [推导、预算与证据契约](inference.md)。
+`inference.Theory` 可以重复查询同一组前提，`closure` 返回所有已证属性、`implies` 回答单一目标、`explain` 提取已有证明中目标所需的步骤。使用 `minimal_cover` 精简规则，`audit_cover` 独立复核双向等价和最小性，`compare` 比较两组规则，`schema_keys` 推导模式候选键。见 [推导、预算与证据契约](inference.md)。
 
 ## 异常与部分结果
 

@@ -21,14 +21,14 @@ cd relsift
 moon run cmd/relsift --target native -- discover examples/orders.csv --table-id orders --format text
 ```
 
-在已有 MoonBit 项目中执行 `moon add wedarp/relsift@0.3.0` 即可使用库。导入和最小调用见 [API 文档](docs/api.md)，发布版见 [Mooncakes](https://mooncakes.io/docs/wedarp/relsift@0.3.0)。
+在已有 MoonBit 项目中执行 `moon add wedarp/relsift@0.4.0` 即可使用库。导入和最小调用见 [API 文档](docs/api.md)，发布版见 [Mooncakes](https://mooncakes.io/docs/wedarp/relsift@0.4.0)。
 
 | 使用场景 | 可运行入口 | 可核查的输出 |
 | --- | --- | --- |
 | 理解无文档明细 | `discover` 读取四行订单 CSV | 8 条 FD、5 个最小唯一组合和删列反例 |
 | 检查跨表关联 | `ind` 与 `diagnose` 读取 JSON 表 | 单列包含候选、目标唯一性与多列孤儿元组 |
 | 检查下一份导出 | `compare` 读取新快照与发现报告 | 仍成立、失去最小性、违反规则、缺少列 |
-| 检查规则能否推出新结论 | `moon run examples/inference` | 属性闭包、推导步骤与可复核的两行反模型 |
+| 精简和审查函数依赖 | `moon run examples/inference` | 等价最小覆盖、两行反模型和最小决定列组 |
 
 相关命令详见下列实验和 [CLI 协议](docs/protocol.md)。版本变化见 [更新记录](CHANGELOG.md)。
 
@@ -119,7 +119,7 @@ for rule in result.fds {
 
 包导入配置与完整可运行代码见 [examples/library](examples/library/main.mbt)。
 
-使用 `wedarp/relsift/inference` 可以对选定的函数依赖前提计算闭包。`Theory::implies` 返回可独立复核的推导步骤或两行反模型，在预算不足时保留未确定状态。见 [推导示例和 API](docs/inference.md)。
+使用 `wedarp/relsift/inference` 可以对选定的函数依赖计算闭包、精简规则并比较两个规则集。订单示例把 8 条发现规则精简为 5 条等价规则，并独立复核；它也对比规则推导的最小决定列组和实际行的唯一性。见 [推导示例和 API](docs/inference.md)。
 
 ## 算法与边界
 

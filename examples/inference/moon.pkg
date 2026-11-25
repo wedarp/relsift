@@ -1,5 +1,8 @@
 import {
   "wedarp/relsift/inference" @rules,
+  "wedarp/relsift" @engine,
+  "wedarp/relsift/codec",
+  "wedarp/relsift/verify",
 }
 
 pkgtype(kind: "executable")

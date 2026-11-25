@@ -1,10 +1,12 @@
 ///|
 fn main raise {
   for
-    (row_count, width, cardinality, duplicate_every) in [
-      (1000, 4, 16, 0),
-      (4000, 6, 64, 5),
-      (10000, 6, 128, 5),
+    (row_count, width, cardinality, duplicate_every, work_budget) in [
+      (1000, 4, 16, 0, 100000000L),
+      (4000, 6, 64, 5, 100000000L),
+      (10000, 6, 128, 5, 100000000L),
+      (256, 16, 32, 0, 100000000L),
+      (256, 24, 32, 0, 2000000L),
     ] {
     let initial_seed = 20261120U
     let mut seed = initial_seed
@@ -45,18 +47,17 @@ fn main raise {
       ..@budget.defaults(),
       max_lhs: 3,
       max_ucc_width: 3,
-      max_work: 100000000L,
+      max_work: work_budget,
     }
-    ignore(@relsift.discover(t, limits~)) // warmup outside measured runs
+    let result = @relsift.discover(t, limits~) // warmup and reference output
     let times = []
     for _ in 0..<7 {
       let started = @env.now()
-      let result = @relsift.discover(t, limits~)
-      assert_eq(result.status, @budget.CompleteInDomain)
+      let sample = @relsift.discover(t, limits~)
       times.push(@env.now() - started)
+      assert_eq(sample, result)
     }
     times.sort()
-    let result = @relsift.discover(t, limits~)
     let report : Json = {
       "seed": initial_seed.reinterpret_as_int(),
       "rows": row_count,
@@ -72,6 +73,7 @@ fn main raise {
       "status": @codec.status(result.status),
       "max_lhs": limits.max_lhs,
       "max_ucc_width": limits.max_ucc_width,
+      "max_work": limits.max_work,
       "fds": result.fds.length(),
       "uccs": result.uccs.length(),
       "work": result.usage.work,
@@ -79,4 +81,5 @@ fn main raise {
     }
     println(@codec.canonical(report))
   }
+  benchmark_theory()
 }

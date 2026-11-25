@@ -3,6 +3,7 @@ import {
   "wedarp/relsift/model",
   "wedarp/relsift/budget",
   "wedarp/relsift/codec",
+  "wedarp/relsift/inference",
   "moonbitlang/core/env",
 }
 
