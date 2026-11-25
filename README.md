@@ -76,9 +76,9 @@ moon run cmd/relsift --target native -- verify examples/exports.json examples/ve
 
 ## 在 MoonBit 项目中使用
 
-核心没有第三方模块依赖，不需要数据库、JVM、Python 或外部服务运行时。CLI 的文件读写使用随工具链分发的 `core/async`；Node.js 只用于集成测试。
+计算核心仅依赖 MoonBit core。CLI 文件读写使用工具链随附的 `core/async`。Node.js 用于 CLI 集成测试和公开数据基准。
 
-源码可通过 `moon.work` 作为独立模块依赖，具体配置见 [API 文档](docs/api.md)。本仓库不以 `moon add` 命令暗示包已发布至 Mooncakes。
+在消费项目中执行 `moon add wedarp/relsift@0.2.0` 安装发布版，或通过 `moon.work` 引用源码。导入示例见 [API 文档](docs/api.md)。
 
 ```moonbit
 let t = @codec.parse_csv(csv_text, "orders")

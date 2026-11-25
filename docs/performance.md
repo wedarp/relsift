@@ -41,3 +41,24 @@ Windows NT 10.0.19045，Intel Core i7-9700 @ 3.00GHz，8 个逻辑处理器；na
 行数、实际基数、重复率、候选数、FD/UCC 数量及完成域均与上表一致。优化后工作单位分别为 24749、778044、1991234；新扫描方式与代表数组初始化的计费不同，操作数增加不等于墙钟更慢。此处没有测量峰值内存，不能把少构造联合分区解释为已证实的总内存下降。
 
 这些结果只支持此次固定数据的实测比较，不保证其他数据、宿主或宽表获得相同比例改善。低毫秒组的变化尤其容易受到计时分辨率与调度影响。
+
+## 2026-11-25 公开数据基准
+
+数据来自 [Palmer Penguins v0.1.0](https://github.com/allisonhorst/palmerpenguins/tree/v0.1.0/inst/extdata)（CC0）与 [UCI Wine Quality](https://doi.org/10.24432/C56S3T)（CC BY 4.0）。从原站获取数据，文件保存在仓库外。脚本校验每份源文件的 SHA-256。企鹅数据按原样导入，`NA` 保留为普通字符串。葡萄酒数据只将分号分隔改为逗号，保留字面数值和重复行。
+
+```sh
+moon build cmd/relsift --target native --release
+node examples/performance/datasets.mjs DATA_DIRECTORY [BASELINE_EXECUTABLE]
+```
+
+`DATA_DIRECTORY` 包含 [penguins.csv](https://raw.githubusercontent.com/allisonhorst/palmerpenguins/v0.1.0/inst/extdata/penguins.csv)，以及从 [Wine Quality 官方压缩包](https://archive.ics.uci.edu/static/public/186/wine+quality.zip) 解出的 `winequality-red.csv` 和 `winequality-white.csv`。可选参数为旧版原生 CLI 的绝对路径，本次使用 `a0f74b8`。脚本输出源文件及输入哈希、每列基数、重复数量、七次耗时、状态与工作单位。每组先预热一次，并检查重复执行的输出一致。
+
+本次使用 Windows 10.0.19045、Intel Core i7-9700、Node v24.19.0 和相同的 MoonBit 固定工具链。计时覆盖启动进程、读取文件、计算及 JSON 输出。发现宽度上限均为 4，发现和回归分别限制为 1 亿工作单位。三组发现均在声明域内完成。
+
+| 数据 | 行 × 列 | 重复整行数 | FD / UCC | 发现中位数 | 新版回归中位数 | 旧版回归中位数 | 旧版 → 新版完成规则数 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 企鹅 | 344 × 8 | 0 | 25 / 7 | 43.386 ms | 45.529 ms | 65.791 ms | 32 → 32 |
+| 红葡萄酒 | 1599 × 12 | 240 | 782 / 0 | 455.094 ms | 2521.686 ms | 1050.756 ms | 25 → 782 |
+| 白葡萄酒 | 4898 × 12 | 937 | 186 / 0 | 1155.460 ms | 2112.067 ms | 1820.001 ms | 3 → 186 |
+
+回归用发现报告检查同一快照，覆盖大量仍成立的规则。旧版两组葡萄酒回归均在 `max_work` 耗尽时停止，耗时对应部分结果。脚本逐项核对旧版已完成的规则和新版对应前缀。新版三组回归消耗分别为 184034、26140884、19184544 个工作单位。计费随算法更新而变化。宽度四下观察到的葡萄酒函数依赖仍需要业务解释。

@@ -2,6 +2,16 @@
 
 ## 作为独立模块使用
 
+在消费项目中安装发布版：
+
+```sh
+moon add wedarp/relsift@0.2.0
+```
+
+导入路径为 `wedarp/relsift`，数据模型位于 `wedarp/relsift/model`，验证器位于 `wedarp/relsift/verify`。
+
+## 引用本地源码
+
 将本仓库与消费项目放在同一工作区中，例如：
 
 ```text
@@ -26,11 +36,11 @@ members = ["relsift", "analysis"]
 name = "wedarp/analysis"
 version = "0.1.0"
 import {
-  "wedarp/relsift@0.1.0",
+  "wedarp/relsift@0.2.0",
 }
 ```
 
-本地成员按模块名称解析，版本来自工作区源码。锁定所使用的 RelSift Git 提交可固定源码版本。仓库当前提供源码工作区依赖方式，不要求 Mooncakes 登录或注册表发布。
+本地成员按模块名称解析，版本来自工作区源码。锁定所使用的 RelSift Git 提交可固定源码版本。
 
 消费项目 `moon.pkg`：
 
